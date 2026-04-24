@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS api_config (
   company_id TEXT PRIMARY KEY REFERENCES companies(id) ON DELETE CASCADE,
   base_url TEXT NOT NULL,
   token TEXT,
+  secret_key TEXT,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 

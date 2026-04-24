@@ -260,7 +260,8 @@ export const getApiConfig = async (): Promise<ApiConfig> => {
       if (!error && data) {
         return {
           baseUrl: data.base_url || DEFAULT_BASE_URL,
-          token: data.token || ''
+          token: data.token || '',
+          secretKey: data.secret_key || ''
         };
       }
     }
@@ -289,10 +290,14 @@ export const saveApiConfig = async (config: ApiConfig) => {
         const { error } = await supabase.from('api_config').upsert({
           company_id: companyId,
           base_url: config.baseUrl,
-          token: config.token
-        }, { onConflict: 'company_id' });
+          token: config.token,
+          secret_key: config.secretKey || ''
+        });
 
-        if (error) console.error('Error saving api config to supabase:', error);
+        if (error) {
+          console.error('Error saving api config to supabase:', error);
+          throw error;
+        }
       }
     } else {
       // Only use local storage for non-company sessions (super admin or initial setup)
@@ -300,6 +305,7 @@ export const saveApiConfig = async (config: ApiConfig) => {
     }
   } catch (err) {
     console.error('saveApiConfig error:', err);
+    throw err;
   }
 };
 

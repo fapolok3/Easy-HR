@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Input, Button, Badge } from '../components/UI';
+import { Card, Input, Button, Badge, Modal } from '../components/UI';
 import { getApiConfig, saveApiConfig, validateToken, getOrgSettings, saveOrgSettings } from '../services/api';
 import { OrgSettings } from '../types';
 import { IconTrash } from '../components/Icons';
@@ -16,6 +16,8 @@ const Settings = () => {
     leavePolicies: []
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [isReseting, setIsReseting] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [newItem, setNewItem] = useState('');
 
@@ -50,6 +52,25 @@ const Settings = () => {
       setStatus('error');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleResetConfig = async () => {
+    setIsReseting(true);
+    try {
+      const defaultConfig = {
+        baseUrl: 'https://test.api-inovace360.com/api/v1',
+        token: '',
+        secretKey: ''
+      };
+      await saveApiConfig(defaultConfig);
+      setApiConfig(defaultConfig);
+      setStatus('idle');
+      setShowResetModal(false);
+    } catch (error) {
+      console.error('Reset failed:', error);
+    } finally {
+      setIsReseting(false);
     }
   };
 
@@ -141,6 +162,13 @@ const Settings = () => {
                 onChange={(e) => setApiConfig({ ...apiConfig, token: e.target.value })}
                 required
               />
+              <Input
+                label="Secret Key (Optional)"
+                type="password"
+                placeholder="Enter secret key if required"
+                value={apiConfig.secretKey}
+                onChange={(e) => setApiConfig({ ...apiConfig, secretKey: e.target.value })}
+              />
             </div>
 
             <div className="bg-surfaceHighlight p-4 rounded-lg border border-border text-sm">
@@ -158,12 +186,41 @@ const Settings = () => {
                <div className="flex items-center gap-2">
                  {status === 'success' && <Badge variant="success">Connected Successfully</Badge>}
                  {status === 'error' && <Badge variant="danger">Connection Failed</Badge>}
+                 <Button 
+                   type="button" 
+                   variant="ghost" 
+                   size="sm" 
+                   className="text-danger hover:bg-danger/10"
+                   onClick={() => setShowResetModal(true)}
+                 >
+                   Reset Configuration
+                 </Button>
                </div>
               <Button type="submit" disabled={isSaving}>
                 {isSaving ? 'Connecting...' : 'Save & Test Connection'}
               </Button>
             </div>
           </form>
+
+          <Modal 
+            isOpen={showResetModal} 
+            onClose={() => setShowResetModal(false)}
+            title="Reset API Configuration"
+          >
+            <div className="space-y-4">
+              <p className="text-textMuted">
+                Are you sure you want to reset the API configuration? This will clear your current API token and reset the base URL to default.
+              </p>
+              <div className="flex justify-end gap-3 pt-4">
+                <Button variant="secondary" onClick={() => setShowResetModal(false)} disabled={isReseting}>
+                  Cancel
+                </Button>
+                <Button variant="danger" onClick={handleResetConfig} disabled={isReseting}>
+                  {isReseting ? 'Resetting...' : 'Yes, Reset'}
+                </Button>
+              </div>
+            </div>
+          </Modal>
         </Card>
       )}
 
