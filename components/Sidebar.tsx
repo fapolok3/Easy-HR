@@ -26,7 +26,6 @@ const Sidebar = ({ isCollapsed }: { isCollapsed: boolean }) => {
 
   const superAdminNav = [
     { to: '/admin', label: 'Admin Dashboard', icon: IconDashboard },
-    { to: '/companies', label: 'Manage Companies', icon: IconUsers },
   ];
 
   const navItems = session?.isSuperAdmin ? superAdminNav : companyNav;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Settings from './pages/Settings';
@@ -44,10 +44,11 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
   if (isLoginPage) return <>{children}</>;
 
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const navigate = useNavigate();
 
   const handleLogout = () => {
     setCurrentSession(null);
-    window.location.href = '/login';
+    navigate('/login');
   };
 
   return (

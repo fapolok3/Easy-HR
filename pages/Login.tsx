@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, Input, Button } from '../components/UI';
 import { getCompanies, setCurrentSession, AuthSession } from '../services/api';
 import { IconCheckCircle, IconBot } from '../components/Icons';
@@ -7,6 +8,7 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,7 +21,7 @@ const Login = () => {
         isSuperAdmin: true
       };
       setCurrentSession(session);
-      window.location.href = '/admin';
+      navigate('/admin');
       return;
     }
 
@@ -34,7 +36,7 @@ const Login = () => {
         companyId: company.id
       };
       setCurrentSession(session);
-      window.location.href = '/';
+      navigate('/');
       return;
     }
 
