@@ -71,7 +71,6 @@ export const setCurrentSession = (session: AuthSession | null) => {
     localStorage.setItem(LS_AUTH_SESSION, JSON.stringify(session));
   } else {
     localStorage.removeItem(LS_AUTH_SESSION);
-    localStorage.removeItem(LS_API_CONFIG); // Clear API config on logout to prevent bleeding
   }
 };
 
@@ -253,59 +252,45 @@ export const getApiConfig = async (): Promise<ApiConfig> => {
     if (!checkSupabase()) return { baseUrl: DEFAULT_BASE_URL, token: '' };
     const session = getCurrentSession();
     const companyId = session?.companyId;
-    
-    // Always prefer Supabase data to avoid bleed through from other companies in localStorage
-    if (companyId) {
-      const { data, error } = await supabase.from('api_config').select('*').eq('company_id', companyId).maybeSingle();
-      if (!error && data) {
-        return {
-          baseUrl: data.base_url || DEFAULT_BASE_URL,
-          token: data.token || '',
-          secretKey: data.secret_key || ''
-        };
-      }
-    }
-
-    // Fallback to local storage only if NOT logged in as a specific company (e.g. initial setup)
     if (!companyId) {
       const stored = localStorage.getItem(LS_API_CONFIG);
       return stored ? JSON.parse(stored) : { baseUrl: DEFAULT_BASE_URL, token: '' };
     }
 
-    return { baseUrl: DEFAULT_BASE_URL, token: '' };
+    const { data, error } = await supabase.from('api_config').select('*').eq('company_id', companyId).maybeSingle();
+    if (error || !data) {
+      const stored = localStorage.getItem(LS_API_CONFIG);
+      return stored ? JSON.parse(stored) : { baseUrl: DEFAULT_BASE_URL, token: '' };
+    }
+
+    return {
+      baseUrl: data.base_url,
+      token: data.token || ''
+    };
   } catch (err) {
-    console.error('getApiConfig error:', err);
+    console.error(err);
     return { baseUrl: DEFAULT_BASE_URL, token: '' };
   }
 };
 
 export const saveApiConfig = async (config: ApiConfig) => {
+  localStorage.setItem(LS_API_CONFIG, JSON.stringify(config));
+  
   try {
+    if (!checkSupabase()) return;
     const session = getCurrentSession();
     const companyId = session?.companyId;
-    
-    if (companyId) {
-      // Prioritize saving to Supabase
-      if (checkSupabase()) {
-        const { error } = await supabase.from('api_config').upsert({
-          company_id: companyId,
-          base_url: config.baseUrl,
-          token: config.token,
-          secret_key: config.secretKey || ''
-        });
+    if (!companyId) return;
 
-        if (error) {
-          console.error('Error saving api config to supabase:', error);
-          throw error;
-        }
-      }
-    } else {
-      // Only use local storage for non-company sessions (super admin or initial setup)
-      localStorage.setItem(LS_API_CONFIG, JSON.stringify(config));
-    }
+    const { error } = await supabase.from('api_config').upsert({
+      company_id: companyId,
+      base_url: config.baseUrl,
+      token: config.token
+    }, { onConflict: 'company_id' });
+
+    if (error) console.error('Error saving api config to supabase:', error);
   } catch (err) {
-    console.error('saveApiConfig error:', err);
-    throw err;
+    console.error(err);
   }
 };
 
@@ -921,6 +906,37 @@ export const validateToken = async (token: string, baseUrl: string): Promise<boo
     const response = await fetch(url);
     return response.ok;
   } catch (error) {
+    return false;
+  }
+};
+
+export const resetApiToken = async (): Promise<boolean> => {
+  try {
+    if (!checkSupabase()) return false;
+    const session = getCurrentSession();
+    const companyId = session?.companyId;
+    if (!companyId) return false;
+
+    const { error } = await supabase
+      .from('api_config')
+      .update({ token: '' })
+      .eq('company_id', companyId);
+
+    if (error) {
+      console.error('Error resetting token:', error);
+      return false;
+    }
+
+    // Clear local storage too
+    const stored = localStorage.getItem(LS_API_CONFIG);
+    if (stored) {
+      const config = JSON.parse(stored);
+      localStorage.setItem(LS_API_CONFIG, JSON.stringify({ ...config, token: '' }));
+    }
+
+    return true;
+  } catch (err) {
+    console.error(err);
     return false;
   }
 };
