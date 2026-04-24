@@ -85,9 +85,14 @@ CREATE TABLE IF NOT EXISTS api_config (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Enable RLS (Optional but Recommended)
+-- 7. Security: Enable Row Level Security (RLS)
+-- Run these one by one in your Supabase SQL Editor
 -- ALTER TABLE companies ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE org_settings ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE employees ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE leave_requests ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE mobile_punches ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE api_config ENABLE ROW LEVEL SECURITY;
+
+-- Note: To fully implement data isolation, you should use Supabase Auth.
+-- Currently, data is separated using the `company_id` column in all queries.

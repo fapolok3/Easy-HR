@@ -84,7 +84,7 @@ export const getCompanies = async (): Promise<Company[]> => {
       console.error('Error fetching companies:', error);
       return [];
     }
-    return data.map((item: any) => ({
+    return (data || []).map((item: any) => ({
       id: item.id,
       name: item.name,
       adminEmail: item.admin_email,
@@ -92,7 +92,7 @@ export const getCompanies = async (): Promise<Company[]> => {
       createdAt: item.created_at
     }));
   } catch (err) {
-    console.error(err);
+    console.error('Fetch companies exception:', err);
     return [];
   }
 };
@@ -100,7 +100,7 @@ export const getCompanies = async (): Promise<Company[]> => {
 export const getCompanyById = async (id: string): Promise<Company | null> => {
   try {
     if (!checkSupabase()) return null;
-    const { data, error } = await supabase.from('companies').select('*').eq('id', id).single();
+    const { data, error } = await supabase.from('companies').select('*').eq('id', id).maybeSingle();
     if (error || !data) return null;
     return {
       id: data.id,
@@ -110,7 +110,7 @@ export const getCompanyById = async (id: string): Promise<Company | null> => {
       createdAt: data.created_at
     };
   } catch (err) {
-    console.error(err);
+    console.error('Fetch company by ID exception:', err);
     return null;
   }
 };
@@ -118,10 +118,9 @@ export const getCompanyById = async (id: string): Promise<Company | null> => {
 export const saveCompanies = async (companies: Company[]) => {
   try {
     if (!checkSupabase()) return;
-    // In a real app we'd handle upsert better, but since the UI sends the whole list:
     for (const company of companies) {
       const { error } = await supabase.from('companies').upsert({
-        id: company.id.length > 10 ? company.id : undefined, // Check if it looks like a UUID
+        id: company.id.length > 10 ? company.id : undefined,
         name: company.name,
         admin_email: company.adminEmail,
         admin_password: company.adminPassword
@@ -129,7 +128,7 @@ export const saveCompanies = async (companies: Company[]) => {
       if (error) console.error('Error saving company:', error);
     }
   } catch (err) {
-    console.error(err);
+    console.error('Save companies exception:', err);
   }
 };
 
@@ -138,43 +137,51 @@ export const createCompany = async (company: Omit<Company, 'id' | 'createdAt'>):
     throw new Error('Supabase not initialized');
   }
   
-  // 1. Create the company
-  const { data, error } = await supabase.from('companies').insert({
+  // 1. Create the company - using a two step process to avoid .single() issues if RLS is complex
+  const { data: inserts, error: insertError } = await supabase.from('companies').insert({
     name: company.name,
     admin_email: company.adminEmail,
     admin_password: company.adminPassword
-  }).select().single();
+  }).select();
   
-  if (error) {
-     console.error('Error creating company record:', error);
-     if (error.code === '23505') throw new Error('A company with this admin email already exists.');
-     throw new Error(error.message || 'Failed to create company record');
+  if (insertError) {
+     console.error('Error creating company record:', insertError);
+     if (insertError.code === '23505') throw new Error('A company with this admin email already exists.');
+     throw new Error(insertError.message || 'Failed to create company record');
   }
 
-  // 2. Create default org settings for new company
-  console.log('Creating default org settings for company ID:', data.id);
-  const { error: settingsError } = await supabase.from('org_settings').insert({
-    company_id: data.id,
-    departments: DEFAULT_ORG_SETTINGS.departments,
-    designations: DEFAULT_ORG_SETTINGS.designations,
-    employment_types: DEFAULT_ORG_SETTINGS.employmentTypes,
-    workplaces: DEFAULT_ORG_SETTINGS.workplaces,
-    shifts: DEFAULT_ORG_SETTINGS.shifts,
-    leave_policies: DEFAULT_ORG_SETTINGS.leavePolicies,
-    holidays: DEFAULT_ORG_SETTINGS.holidays || []
-  });
+  if (!inserts || inserts.length === 0) {
+    throw new Error('No data returned after company creation');
+  }
 
-  if (settingsError) {
-    console.error('Error creating default org settings:', settingsError);
-    // Even if settings fail, the company was created.
+  const newCompany = inserts[0];
+  
+  // 2. Create default org settings for new company
+  try {
+    const { error: settingsError } = await supabase.from('org_settings').insert({
+      company_id: newCompany.id,
+      departments: DEFAULT_ORG_SETTINGS.departments,
+      designations: DEFAULT_ORG_SETTINGS.designations,
+      employment_types: DEFAULT_ORG_SETTINGS.employmentTypes,
+      workplaces: DEFAULT_ORG_SETTINGS.workplaces,
+      shifts: DEFAULT_ORG_SETTINGS.shifts,
+      leave_policies: DEFAULT_ORG_SETTINGS.leavePolicies,
+      holidays: DEFAULT_ORG_SETTINGS.holidays || []
+    });
+
+    if (settingsError) {
+      console.error('Error creating default org settings:', settingsError);
+    }
+  } catch (e) {
+    console.error('Exception creating default settings:', e);
   }
 
   return {
-    id: data.id,
-    name: data.name,
-    adminEmail: data.admin_email,
-    adminPassword: data.admin_password,
-    createdAt: data.created_at
+    id: newCompany.id,
+    name: newCompany.name,
+    adminEmail: newCompany.admin_email,
+    adminPassword: newCompany.admin_password,
+    createdAt: newCompany.created_at
   };
 };
 
@@ -439,7 +446,11 @@ export const saveLeaveRequest = async (request: LeaveRequest) => {
 export const updateLeaveRequestStatus = async (id: string, status: 'Approved' | 'Rejected') => {
   try {
     if (!checkSupabase()) return;
-    const { error } = await supabase.from('leave_requests').update({ status }).eq('id', id);
+    const session = getCurrentSession();
+    const companyId = session?.companyId;
+    if (!companyId) return;
+
+    const { error } = await supabase.from('leave_requests').update({ status }).eq('id', id).eq('company_id', companyId);
     if (error) console.error('Error updating leave request status:', error);
   } catch (err) {
     console.error(err);
