@@ -6,6 +6,7 @@ import { IconPlus, IconTrash, IconEdit, IconCheckCircle } from '../components/Ic
 const AdminPanel = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [formData, setFormData] = useState<Partial<Company>>({
     name: '',
@@ -14,8 +15,10 @@ const AdminPanel = () => {
   });
 
   const loadCompanies = async () => {
+    setLoading(true);
     const data = await getCompanies();
     setCompanies(data);
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -37,20 +40,32 @@ const AdminPanel = () => {
     e.preventDefault();
     if (!formData.name || !formData.adminEmail || !formData.adminPassword) return;
 
-    if (editingCompany) {
-       // For editing, we'd normally have an updateCompany function
-       // But based on current api.ts, I'll need to implement one or use what exists
-       // actually I'll just refresh list for now since I'm implementing create properly
-    } else {
-      await createCompany({
-        name: formData.name,
-        adminEmail: formData.adminEmail,
-        adminPassword: formData.adminPassword
-      });
+    setLoading(true);
+    try {
+      if (editingCompany) {
+         // Update logic if needed
+      } else {
+        const result = await createCompany({
+          name: formData.name!,
+          adminEmail: formData.adminEmail!,
+          adminPassword: formData.adminPassword!
+        });
+        
+        if (!result) {
+          alert('Failed to create company. Please check console for errors.');
+        } else {
+          alert('Company created successfully!');
+        }
+      }
+      
+      await loadCompanies();
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      alert('An error occurred while saving.');
+    } finally {
+      setLoading(false);
     }
-    
-    await loadCompanies();
-    setIsModalOpen(false);
   };
 
   const handleDelete = async (id: string) => {
@@ -144,9 +159,9 @@ const AdminPanel = () => {
             required
           />
           <div className="flex justify-end gap-3 pt-4 border-t border-border mt-6">
-            <Button variant="ghost" type="button" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-            <Button type="submit" className="px-8">
-              {editingCompany ? 'Save Changes' : 'Register Company'}
+            <Button variant="ghost" type="button" onClick={() => setIsModalOpen(false)} disabled={loading}>Cancel</Button>
+            <Button type="submit" className="px-8" disabled={loading}>
+              {loading ? 'Processing...' : (editingCompany ? 'Save Changes' : 'Register Company')}
             </Button>
           </div>
         </form>

@@ -217,7 +217,13 @@ export const createCompany = async (company: Omit<Company, 'id' | 'createdAt'>):
     // Create default org settings for new company
     await supabase.from('org_settings').insert({
       company_id: data.id,
-      ...DEFAULT_ORG_SETTINGS
+      departments: DEFAULT_ORG_SETTINGS.departments,
+      designations: DEFAULT_ORG_SETTINGS.designations,
+      employment_types: DEFAULT_ORG_SETTINGS.employmentTypes,
+      workplaces: DEFAULT_ORG_SETTINGS.workplaces,
+      shifts: DEFAULT_ORG_SETTINGS.shifts,
+      leave_policies: DEFAULT_ORG_SETTINGS.leavePolicies,
+      holidays: DEFAULT_ORG_SETTINGS.holidays
     });
 
     return {

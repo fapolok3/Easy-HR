@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS org_settings (
   workplaces JSONB DEFAULT '[]',
   shifts JSONB DEFAULT '[]',
   leave_policies JSONB DEFAULT '[]',
+  holidays JSONB DEFAULT '[]',
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -28,10 +29,21 @@ CREATE TABLE IF NOT EXISTS employees (
   department TEXT,
   status TEXT DEFAULT 'Active',
   join_date TEXT,
+  end_date TEXT,
   email TEXT,
   phone TEXT,
-  gender TEXT,
+  avatar TEXT,
   zk_device_id TEXT,
+  shift TEXT,
+  shift_effective_date TEXT,
+  employment_type TEXT,
+  gender TEXT,
+  leave_policy TEXT,
+  workplace TEXT,
+  line_manager TEXT,
+  is_admin BOOLEAN DEFAULT FALSE,
+  is_line_manager BOOLEAN DEFAULT FALSE,
+  password TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -47,6 +59,7 @@ CREATE TABLE IF NOT EXISTS leave_requests (
   reason TEXT,
   status TEXT DEFAULT 'Pending',
   applied_date TEXT,
+  attachment TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
