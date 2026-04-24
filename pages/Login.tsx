@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Input, Button } from '../components/UI';
-import { getCompanies, setCurrentSession, AuthSession } from '../services/api';
+import { getCompanies, setCurrentSession } from '../services/api';
+import { AuthSession } from '../types';
 import { IconCheckCircle, IconBot } from '../components/Icons';
 
 const Login = () => {
@@ -99,15 +100,6 @@ const Login = () => {
               <p className="text-[10px] text-textMuted uppercase font-bold tracking-widest leading-relaxed">
                 By signing in, you agree to our Terms of Service and Privacy Policy.
               </p>
-              <div className="mt-4 pt-2 border-t border-border/10">
-                 <button 
-                   type="button"
-                   onClick={() => navigate('/admin')}
-                   className="text-[10px] text-[#1cbdb0] uppercase font-bold tracking-widest hover:underline"
-                 >
-                   Access Super Admin Portal
-                 </button>
-              </div>
             </div>
         </form>
       </Card>

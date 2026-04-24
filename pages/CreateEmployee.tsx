@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Button, Input, Select } from '../components/UI';
 import { IconCheckCircle, IconX, IconUsers, IconSettings } from '../components/Icons';
-import { saveLocalEmployee, getOrgSettings, OrgSettings } from '../services/api';
+import { saveLocalEmployee, getOrgSettings } from '../services/api';
+import { OrgSettings } from '../types';
 import { Employee } from '../types';
 
 const CreateEmployee = () => {

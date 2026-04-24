@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Button, Input, Select, Badge, Modal } from '../components/UI';
 import { IconArrowLeft, IconTrash, IconCheckCircle, IconEdit, IconSave } from '../components/Icons';
-import { fetchEmployees, saveLocalEmployee, deleteLocalEmployee, getOrgSettings, OrgSettings } from '../services/api';
-import { Employee } from '../types';
+import { fetchEmployees, saveLocalEmployee, deleteLocalEmployee, getOrgSettings } from '../services/api';
+import { OrgSettings, Employee } from '../types';
 
 const EmployeeProfile = () => {
   const { id } = useParams<{ id: string }>();

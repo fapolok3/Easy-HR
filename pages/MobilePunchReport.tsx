@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Input, Button, Badge } from '../components/UI';
-import { getMobilePunches, MobilePunch } from '../services/api';
+import { getMobilePunches } from '../services/api';
+import { MobilePunch } from '../types';
 import { IconFilter, IconDownload, IconDevice } from '../components/Icons';
 
 const MobilePunchReport = () => {
@@ -8,10 +9,10 @@ const MobilePunchReport = () => {
   const [punches, setPunches] = useState<MobilePunch[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const loadData = () => {
+  const loadData = async () => {
     setLoading(true);
     try {
-      const data = getMobilePunches();
+      const data = await getMobilePunches();
       // Filter by date
       const filtered = data.filter(p => p.timestamp.startsWith(date));
       setPunches(filtered.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));

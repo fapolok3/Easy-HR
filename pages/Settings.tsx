@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Input, Button, Badge } from '../components/UI';
-import { getApiConfig, saveApiConfig, validateToken, getOrgSettings, saveOrgSettings, OrgSettings } from '../services/api';
+import { getApiConfig, saveApiConfig, validateToken, getOrgSettings, saveOrgSettings } from '../services/api';
+import { OrgSettings } from '../types';
 import { IconTrash } from '../components/Icons';
 
 const Settings = () => {

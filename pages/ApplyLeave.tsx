@@ -4,11 +4,9 @@ import {
   getOrgSettings, 
   fetchEmployees, 
   saveLeaveRequest, 
-  getLeaveRequests,
-  LeaveRequest,
-  OrgSettings
+  getLeaveRequests
 } from '../services/api';
-import { Employee } from '../types';
+import { LeaveRequest, OrgSettings, Employee } from '../types';
 import { IconCheckCircle, IconClock, IconFileText, IconCalendar } from '../components/Icons';
 
 const ApplyLeave = () => {

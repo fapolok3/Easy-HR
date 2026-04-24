@@ -15,75 +15,6 @@ const LS_AUTH_SESSION = 'nexushrm_auth_session';
 
 const DEFAULT_BASE_URL = 'https://test.api-inovace360.com/api/v1';
 
-export interface Company {
-  id: string;
-  name: string;
-  adminEmail: string;
-  adminPassword: string;
-  createdAt: string;
-}
-
-export interface AuthSession {
-  userEmail: string;
-  isSuperAdmin: boolean;
-  companyId?: string;
-}
-
-export interface Shift {
-  id: string;
-  name: string;
-  startTime: string;
-  endTime: string;
-  lateAfter: string;
-  earlyExitBefore: string;
-  offDays?: string[];
-}
-
-export interface Holiday {
-  id: string;
-  name: string;
-  date: string;
-}
-
-export interface LeaveCategory {
-  id: string;
-  name: string;
-  maxLeaves: number;
-  applicability: 'All' | 'Male' | 'Female';
-  eligibleAfterDays: number;
-  fileRequiredAfterDays: number;
-  backtrackLimitDays: number;
-}
-
-export interface LeavePolicy {
-  id: string;
-  name: string;
-  categories: LeaveCategory[];
-}
-
-export interface LeaveRequest {
-  id: string;
-  employeeId: string;
-  employeeName: string;
-  leaveCategory: string;
-  startDate: string;
-  endDate: string;
-  reason: string;
-  status: 'Pending' | 'Approved' | 'Rejected';
-  appliedDate: string;
-  attachment?: string;
-}
-
-export interface OrgSettings {
-  departments: string[];
-  designations: string[];
-  employmentTypes: string[];
-  workplaces: string[];
-  shifts: Shift[];
-  leavePolicies: LeavePolicy[];
-  holidays?: Holiday[];
-}
-
 const DEFAULT_ORG_SETTINGS: OrgSettings = {
   departments: ['Engineering', 'HR', 'Sales', 'Marketing', 'Finance'],
   designations: ['Manager', 'Software Engineer', 'Executive', 'Intern'],
@@ -95,6 +26,7 @@ const DEFAULT_ORG_SETTINGS: OrgSettings = {
       name: 'Regular',
       startTime: '09:00 am',
       endTime: '06:00 pm',
+      color: '#1cbdb0',
       lateAfter: '09:10 am',
       earlyExitBefore: '05:50 pm'
     }
@@ -477,17 +409,6 @@ export const updateLeaveRequestStatus = async (id: string, status: 'Approved' | 
 };
 
 const LS_MOBILE_PUNCHES = 'easyhr_mobile_punches';
-
-export interface MobilePunch {
-  id: string;
-  employeeId: string;
-  employeeName: string;
-  type: 'Punch In' | 'Punch Out';
-  timestamp: string; // ISO string
-  latitude: number;
-  longitude: number;
-  address: string;
-}
 
 // --- MOBILE PUNCH PERSISTENCE ---
 export const getMobilePunches = async (): Promise<MobilePunch[]> => {

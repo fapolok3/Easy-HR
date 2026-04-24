@@ -101,4 +101,77 @@ export interface Shift {
   startTime: string;
   endTime: string;
   color: string;
+  lateAfter: string;
+  earlyExitBefore: string;
+  offDays?: string[];
+}
+
+export interface Company {
+  id: string;
+  name: string;
+  adminEmail: string;
+  adminPassword: string;
+  createdAt: string;
+}
+
+export interface AuthSession {
+  userEmail: string;
+  isSuperAdmin: boolean;
+  companyId?: string;
+}
+
+export interface Holiday {
+  id: string;
+  name: string;
+  date: string;
+}
+
+export interface LeaveCategory {
+  id: string;
+  name: string;
+  maxLeaves: number;
+  applicability: 'All' | 'Male' | 'Female';
+  eligibleAfterDays: number;
+  fileRequiredAfterDays: number;
+  backtrackLimitDays: number;
+}
+
+export interface LeavePolicy {
+  id: string;
+  name: string;
+  categories: LeaveCategory[];
+}
+
+export interface LeaveRequest {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  leaveCategory: string;
+  startDate: string;
+  endDate: string;
+  reason: string;
+  status: 'Pending' | 'Approved' | 'Rejected';
+  appliedDate: string;
+  attachment?: string;
+}
+
+export interface OrgSettings {
+  departments: string[];
+  designations: string[];
+  employmentTypes: string[];
+  workplaces: string[];
+  shifts: Shift[];
+  leavePolicies: LeavePolicy[];
+  holidays?: Holiday[];
+}
+
+export interface MobilePunch {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  type: 'Punch In' | 'Punch Out';
+  timestamp: string;
+  latitude: number;
+  longitude: number;
+  address: string;
 }

@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Card, Button } from '../components/UI';
 import { 
   getLeaveRequests, 
-  updateLeaveRequestStatus,
-  LeaveRequest
+  updateLeaveRequestStatus 
 } from '../services/api';
+import { LeaveRequest } from '../types';
 import { IconCheckCircle, IconX, IconClock, IconCalendar } from '../components/Icons';
 
 const Approvals = () => {

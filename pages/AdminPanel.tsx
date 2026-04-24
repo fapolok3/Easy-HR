@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Input, Button, Modal } from '../components/UI';
-import { getCompanies, Company, createCompany, deleteCompany } from '../services/api';
+import { getCompanies, createCompany, deleteCompany } from '../services/api';
+import { Company } from '../types';
 import { IconPlus, IconTrash, IconEdit, IconCheckCircle } from '../components/Icons';
 
 const AdminPanel = () => {

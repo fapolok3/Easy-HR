@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Input, Button, Modal } from '../components/UI';
-import { getOrgSettings, saveOrgSettings, OrgSettings, Holiday } from '../services/api';
+import { getOrgSettings, saveOrgSettings } from '../services/api';
+import { OrgSettings, Holiday } from '../types';
 import { IconTrash, IconEdit, IconPlus, IconCalendar } from '../components/Icons';
 
 const Holidays = () => {

@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Card, Button, Input, Badge, Select } from '../components/UI';
 import { IconSearch, IconUsers, IconCheckCircle, IconX, IconFilter, IconChevronDown, IconChevronUp } from '../components/Icons';
-import { fetchEmployees, getOrgSettings, OrgSettings } from '../services/api';
-import { Employee } from '../types';
+import { fetchEmployees, getOrgSettings } from '../services/api';
+import { Employee, OrgSettings } from '../types';
 
 const Employees = () => {
   const navigate = useNavigate();

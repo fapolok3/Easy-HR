@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Input, Button, Modal, Select as UISelect } from '../components/UI';
-import { getOrgSettings, saveOrgSettings, OrgSettings, LeavePolicy, LeaveCategory } from '../services/api';
+import { getOrgSettings, saveOrgSettings } from '../services/api';
+import { OrgSettings, LeavePolicy, LeaveCategory } from '../types';
 import { IconTrash, IconEdit, IconCheckCircle, IconPlus } from '../components/Icons';
 
 const Leave = () => {
