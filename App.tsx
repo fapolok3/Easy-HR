@@ -21,12 +21,25 @@ import Holidays from './pages/Holidays';
 import Login from './pages/Login';
 import AdminPanel from './pages/AdminPanel';
 import { getCurrentSession, setCurrentSession, getCompanyById, checkSupabase } from './services/api';
+import { AuthSession } from './types';
 import { IconBell, IconSearch, IconMenu, IconX, IconUser, IconAlertCircle } from './components/Icons';
 import { Modal, Button } from './components/UI';
 
+const SessionContext = React.createContext<{
+  session: AuthSession | null;
+  login: (session: AuthSession) => void;
+  logout: () => void;
+}>({
+  session: null,
+  login: () => {},
+  logout: () => {},
+});
+
+export const useSession = () => React.useContext(SessionContext);
+
 const Layout = ({ children }: { children?: React.ReactNode }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const session = getCurrentSession();
+  const { session, logout } = useSession();
   const location = useLocation();
   const isLoginPage = location.pathname === '/login';
 
@@ -50,7 +63,7 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    setCurrentSession(null);
+    logout();
     navigate('/login');
   };
 
@@ -158,15 +171,25 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
 };
 
 const App = () => {
-  const session = getCurrentSession();
+  const [session, setSession] = useState<AuthSession | null>(getCurrentSession());
   const isSupabaseReady = checkSupabase();
 
+  const login = (newSession: AuthSession) => {
+    setCurrentSession(newSession);
+    setSession(newSession);
+  };
+
+  const logout = () => {
+    setCurrentSession(null);
+    setSession(null);
+  };
+
   return (
-    <>
+    <SessionContext.Provider value={{ session, login, logout }}>
       <Routes>
       {/* Public Routes */}
       <Route path="/login" element={<Login />} />
-      <Route path="/admin" element={session?.isSuperAdmin ? <Layout><AdminPanel /></Layout> : <Login />} />
+      <Route path="/admin" element={session?.isSuperAdmin ? <Layout><AdminPanel /></Layout> : <Navigate to="/login" replace />} />
       
       {session?.isSuperAdmin ? (
         <>
@@ -197,7 +220,7 @@ const App = () => {
         <Route path="*" element={<Navigate to="/login" replace />} />
       )}
     </Routes>
-    </>
+    </SessionContext.Provider>
   );
 };
 

@@ -1,10 +1,10 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { IconDashboard, IconUsers, IconSettings, IconClock, IconCalendar, IconDevice, IconFileText, IconCheckCircle, IconBot, IconXCircle } from './Icons';
-import { getCurrentSession } from '../services/api';
+import { useSession } from '../App';
 
 const Sidebar = ({ isCollapsed }: { isCollapsed: boolean }) => {
-  const session = getCurrentSession();
+  const { session } = useSession();
   
   const companyNav = [
     { to: '/', label: 'Dashboard', icon: IconDashboard },

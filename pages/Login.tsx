@@ -1,34 +1,38 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Input, Button } from '../components/UI';
-import { getCompanies, setCurrentSession } from '../services/api';
+import { getCompanies } from '../services/api';
 import { AuthSession } from '../types';
 import { IconCheckCircle, IconBot } from '../components/Icons';
+import { useSession } from '../App';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const navigate = useNavigate();
+  const { login } = useSession();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsLoggingIn(true);
 
-    // Check Super Admin
-    if ((email === 'fapolok3@gmail.com' && password === 'Iamfapolok@1') || 
-        (email === 'admin@admin.com' && password === 'admin123')) {
-      const session: AuthSession = {
-        userEmail: email,
-        isSuperAdmin: true
-      };
-      setCurrentSession(session);
-      navigate('/admin');
-      return;
-    }
-
-    // Check Company Admins
     try {
+      // Check Super Admin
+      if ((email === 'fapolok3@gmail.com' && password === 'Iamfapolok@1') || 
+          (email === 'admin@admin.com' && password === 'admin123')) {
+        const session: AuthSession = {
+          userEmail: email,
+          isSuperAdmin: true
+        };
+        login(session);
+        navigate('/admin');
+        return;
+      }
+
+      // Check Company Admins
       const companies = await getCompanies();
       const company = companies.find(c => c.adminEmail === email && c.adminPassword === password);
       
@@ -38,15 +42,18 @@ const Login = () => {
           isSuperAdmin: false,
           companyId: company.id
         };
-        setCurrentSession(session);
+        login(session);
         navigate('/');
         return;
       }
+
+      setError('Invalid email or password');
     } catch (err) {
       console.error(err);
+      setError('An error occurred during login. Please try again.');
+    } finally {
+      setIsLoggingIn(false);
     }
-
-    setError('Invalid email or password');
   };
 
   return (
@@ -92,8 +99,12 @@ const Login = () => {
              />
           </div>
 
-          <Button type="submit" className="w-full h-12 text-md uppercase font-black tracking-widest mt-4">
-            Sign In
+          <Button 
+            type="submit" 
+            className="w-full h-12 text-md uppercase font-black tracking-widest mt-4"
+            disabled={isLoggingIn}
+          >
+            {isLoggingIn ? 'Authenticating...' : 'Sign In'}
           </Button>
           
           <div className="pt-6 text-center border-t border-border mt-8">
