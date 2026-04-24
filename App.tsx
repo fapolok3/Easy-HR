@@ -20,8 +20,8 @@ import MobilePunchReport from './pages/MobilePunchReport';
 import Holidays from './pages/Holidays';
 import Login from './pages/Login';
 import AdminPanel from './pages/AdminPanel';
-import { getCurrentSession, setCurrentSession, getCompanyById } from './services/api';
-import { IconBell, IconSearch, IconMenu, IconX, IconUser } from './components/Icons';
+import { getCurrentSession, setCurrentSession, getCompanyById, checkSupabase } from './services/api';
+import { IconBell, IconSearch, IconMenu, IconX, IconUser, IconAlertCircle } from './components/Icons';
 import { Modal, Button } from './components/UI';
 
 const Layout = ({ children }: { children?: React.ReactNode }) => {
@@ -159,14 +159,17 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
 
 const App = () => {
   const session = getCurrentSession();
+  const isSupabaseReady = checkSupabase();
 
   return (
-    <Routes>
+    <>
+      <Routes>
+      {/* Public Routes */}
       <Route path="/login" element={<Login />} />
+      <Route path="/admin" element={session?.isSuperAdmin ? <Layout><AdminPanel /></Layout> : <Login />} />
       
       {session?.isSuperAdmin ? (
         <>
-          <Route path="/admin" element={<Layout><AdminPanel /></Layout>} />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </>
       ) : session ? (
@@ -194,6 +197,7 @@ const App = () => {
         <Route path="*" element={<Navigate to="/login" replace />} />
       )}
     </Routes>
+    </>
   );
 };
 

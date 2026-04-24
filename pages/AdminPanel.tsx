@@ -45,27 +45,33 @@ const AdminPanel = () => {
       if (editingCompany) {
          // Update logic if needed
       } else {
-        const result = await createCompany({
+        await createCompany({
           name: formData.name!,
           adminEmail: formData.adminEmail!,
           adminPassword: formData.adminPassword!
         });
-        
-        if (!result) {
-          alert('Failed to create company. Please check console for errors.');
-        } else {
-          alert('Company created successfully!');
-        }
+        alert('Company created successfully!');
       }
       
       await loadCompanies();
       setIsModalOpen(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('An error occurred while saving.');
+      alert(err.message || 'An error occurred while saving.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleVisit = (company: Company) => {
+    // Log in as this company admin (for super admins convenience)
+    const session = {
+      userEmail: company.adminEmail,
+      isSuperAdmin: false,
+      companyId: company.id
+    };
+    localStorage.setItem('nexushrm_auth_session', JSON.stringify(session));
+    window.location.href = '/';
   };
 
   const handleDelete = async (id: string) => {
@@ -113,6 +119,10 @@ const AdminPanel = () => {
                 </div>
 
                 <div className="flex items-center gap-3">
+                   <Button variant="ghost" onClick={() => handleVisit(company)} className="text-[#1cbdb0] hover:bg-[#1cbdb0]/10">
+                     <IconCheckCircle className="w-4 h-4 mr-2" />
+                     Visit Portal
+                   </Button>
                    <Button variant="ghost" onClick={() => handleOpenModal(company)} className="text-primary hover:bg-primary/10">
                      <IconEdit className="w-4 h-4 mr-2" />
                      Edit

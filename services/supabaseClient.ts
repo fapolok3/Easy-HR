@@ -1,14 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const rawUrl = import.meta.env.VITE_SUPABASE_URL || "https://eetnhlivihfshxtpaodd.supabase.co";
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVldG5obGl2aWhmc2h4dHBhb2RkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwMjkzODAsImV4cCI6MjA5MjYwNTM4MH0.QyCDGlz3ITIWp2o_jhL8UlD_Z5pYSmxn7m3so5GOeUk";
+
+// Normalize URL - strip /rest/v1/ if the user accidentally included it
+const supabaseUrl = rawUrl?.replace(/\/rest\/v1\/?$/, '');
 
 // Only initialize if we have the required variables
-// This prevents "supabaseUrl is required" error during startup
 export const supabase = (supabaseUrl && supabaseAnonKey) 
   ? createClient(supabaseUrl, supabaseAnonKey)
-  : null as any; // Cast to any to avoid type errors in consuming code, though we should check for null
+  : null as any;
 
 if (!supabase) {
-  console.warn('Supabase URL or Anon Key is missing. Please provide VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in the environment settings.');
+  console.warn('Supabase initialization failed. VITE_SUPABASE_URL:', supabaseUrl ? 'Found' : 'Missing', 'VITE_SUPABASE_ANON_KEY:', supabaseAnonKey ? 'Found' : 'Missing');
 }

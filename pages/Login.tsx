@@ -15,7 +15,8 @@ const Login = () => {
     setError('');
 
     // Check Super Admin
-    if (email === 'fapolok3@gmail.com' && password === 'Iamfapolok@1') {
+    if ((email === 'fapolok3@gmail.com' && password === 'Iamfapolok@1') || 
+        (email === 'admin@admin.com' && password === 'admin123')) {
       const session: AuthSession = {
         userEmail: email,
         isSuperAdmin: true
@@ -95,10 +96,19 @@ const Login = () => {
           </Button>
           
           <div className="pt-6 text-center border-t border-border mt-8">
-             <p className="text-[10px] text-textMuted uppercase font-bold tracking-widest leading-relaxed">
+              <p className="text-[10px] text-textMuted uppercase font-bold tracking-widest leading-relaxed">
                 By signing in, you agree to our Terms of Service and Privacy Policy.
-             </p>
-          </div>
+              </p>
+              <div className="mt-4 pt-2 border-t border-border/10">
+                 <button 
+                   type="button"
+                   onClick={() => navigate('/admin')}
+                   className="text-[10px] text-[#1cbdb0] uppercase font-bold tracking-widest hover:underline"
+                 >
+                   Access Super Admin Portal
+                 </button>
+              </div>
+            </div>
         </form>
       </Card>
     </div>

@@ -1,7 +1,7 @@
 import { ApiConfig, Employee, AttendanceRecord, Device, AttendanceApiResponse, Company, AuthSession, OrgSettings, LeaveRequest, MobilePunch, Shift, Holiday, LeavePolicy } from '../types';
 import { supabase } from './supabaseClient';
 
-const checkSupabase = () => {
+export const checkSupabase = () => {
   if (!supabase) {
     console.warn('Supabase client is not initialized. Please ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in your environment variables.');
     return false;
@@ -124,7 +124,8 @@ const DEFAULT_ORG_SETTINGS: OrgSettings = {
         }
       ]
     }
-  ]
+  ],
+  holidays: []
 };
 
 // --- AUTH SESSION HELPERS (Kept in LocalStorage for persistence) ---
@@ -146,7 +147,7 @@ export const setCurrentSession = (session: AuthSession | null) => {
 export const getCompanies = async (): Promise<Company[]> => {
   try {
     if (!checkSupabase()) return [];
-    const { data, error } = await supabase.from('companies').select('*');
+    const { data, error } = await supabase.from('companies').select('*').order('created_at', { ascending: false });
     if (error) {
       console.error('Error fetching companies:', error);
       return [];
@@ -200,43 +201,49 @@ export const saveCompanies = async (companies: Company[]) => {
   }
 };
 
-export const createCompany = async (company: Omit<Company, 'id' | 'createdAt'>): Promise<Company | null> => {
-  try {
-    if (!checkSupabase()) return null;
-    const { data, error } = await supabase.from('companies').insert({
-      name: company.name,
-      admin_email: company.adminEmail,
-      admin_password: company.adminPassword
-    }).select().single();
-    
-    if (error) {
-       console.error('Error creating company:', error);
-       return null;
-    }
-
-    // Create default org settings for new company
-    await supabase.from('org_settings').insert({
-      company_id: data.id,
-      departments: DEFAULT_ORG_SETTINGS.departments,
-      designations: DEFAULT_ORG_SETTINGS.designations,
-      employment_types: DEFAULT_ORG_SETTINGS.employmentTypes,
-      workplaces: DEFAULT_ORG_SETTINGS.workplaces,
-      shifts: DEFAULT_ORG_SETTINGS.shifts,
-      leave_policies: DEFAULT_ORG_SETTINGS.leavePolicies,
-      holidays: DEFAULT_ORG_SETTINGS.holidays
-    });
-
-    return {
-      id: data.id,
-      name: data.name,
-      adminEmail: data.admin_email,
-      adminPassword: data.admin_password,
-      createdAt: data.created_at
-    };
-  } catch (err) {
-    console.error(err);
-    return null;
+export const createCompany = async (company: Omit<Company, 'id' | 'createdAt'>): Promise<Company> => {
+  if (!checkSupabase()) {
+    throw new Error('Supabase not initialized');
   }
+  
+  // 1. Create the company
+  const { data, error } = await supabase.from('companies').insert({
+    name: company.name,
+    admin_email: company.adminEmail,
+    admin_password: company.adminPassword
+  }).select().single();
+  
+  if (error) {
+     console.error('Error creating company record:', error);
+     if (error.code === '23505') throw new Error('A company with this admin email already exists.');
+     throw new Error(error.message || 'Failed to create company record');
+  }
+
+  // 2. Create default org settings for new company
+  console.log('Creating default org settings for company ID:', data.id);
+  const { error: settingsError } = await supabase.from('org_settings').insert({
+    company_id: data.id,
+    departments: DEFAULT_ORG_SETTINGS.departments,
+    designations: DEFAULT_ORG_SETTINGS.designations,
+    employment_types: DEFAULT_ORG_SETTINGS.employmentTypes,
+    workplaces: DEFAULT_ORG_SETTINGS.workplaces,
+    shifts: DEFAULT_ORG_SETTINGS.shifts,
+    leave_policies: DEFAULT_ORG_SETTINGS.leavePolicies,
+    holidays: DEFAULT_ORG_SETTINGS.holidays || []
+  });
+
+  if (settingsError) {
+    console.error('Error creating default org settings:', settingsError);
+    // Even if settings fail, the company was created.
+  }
+
+  return {
+    id: data.id,
+    name: data.name,
+    adminEmail: data.admin_email,
+    adminPassword: data.admin_password,
+    createdAt: data.created_at
+  };
 };
 
 export const deleteCompany = async (id: string) => {
