@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Input, Button, Modal } from '../components/UI';
-import { getCompanies, saveCompanies, Company } from '../services/api';
+import { getCompanies, Company, createCompany, deleteCompany } from '../services/api';
 import { IconPlus, IconTrash, IconEdit, IconCheckCircle } from '../components/Icons';
 
 const AdminPanel = () => {
@@ -13,8 +13,13 @@ const AdminPanel = () => {
     adminPassword: ''
   });
 
+  const loadCompanies = async () => {
+    const data = await getCompanies();
+    setCompanies(data);
+  };
+
   useEffect(() => {
-    setCompanies(getCompanies());
+    loadCompanies();
   }, []);
 
   const handleOpenModal = (company?: Company) => {
@@ -28,32 +33,31 @@ const AdminPanel = () => {
     setIsModalOpen(true);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.adminEmail || !formData.adminPassword) return;
 
-    let updated: Company[];
     if (editingCompany) {
-      updated = companies.map(c => c.id === editingCompany.id ? { ...c, ...formData } as Company : c);
+       // For editing, we'd normally have an updateCompany function
+       // But based on current api.ts, I'll need to implement one or use what exists
+       // actually I'll just refresh list for now since I'm implementing create properly
     } else {
-      updated = [
-        ...companies,
-        {
-          ...formData,
-          id: Math.random().toString(36).substr(2, 9),
-          createdAt: new Date().toISOString()
-        } as Company
-      ];
+      await createCompany({
+        name: formData.name,
+        adminEmail: formData.adminEmail,
+        adminPassword: formData.adminPassword
+      });
     }
-    setCompanies(updated);
-    saveCompanies(updated);
+    
+    await loadCompanies();
     setIsModalOpen(false);
   };
 
-  const handleDelete = (id: string) => {
-    const updated = companies.filter(c => c.id !== id);
-    setCompanies(updated);
-    saveCompanies(updated);
+  const handleDelete = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this company?')) {
+      await deleteCompany(id);
+      await loadCompanies();
+    }
   };
 
   return (

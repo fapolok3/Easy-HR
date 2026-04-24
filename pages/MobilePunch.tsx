@@ -45,13 +45,17 @@ const MobilePunch = () => {
   }, []);
 
   useEffect(() => {
-    if (selectedEmployeeId) {
-      const punches = getMobilePunches().filter(p => 
-        p.employeeId === selectedEmployeeId && 
-        p.timestamp.split('T')[0] === new Date().toISOString().split('T')[0]
-      );
-      setTodayPunches(punches);
-    }
+    const loadPunches = async () => {
+      if (selectedEmployeeId) {
+        const allPunches = await getMobilePunches();
+        const punches = allPunches.filter(p => 
+          p.employeeId === selectedEmployeeId && 
+          p.timestamp.split('T')[0] === new Date().toISOString().split('T')[0]
+        );
+        setTodayPunches(punches);
+      }
+    };
+    loadPunches();
   }, [selectedEmployeeId]);
 
   const handlePunch = async () => {

@@ -1,11 +1,16 @@
-import { ApiConfig, Employee, AttendanceRecord, Device, AttendanceApiResponse } from '../types';
+import { ApiConfig, Employee, AttendanceRecord, Device, AttendanceApiResponse, Company, AuthSession, OrgSettings, LeaveRequest, MobilePunch, Shift, Holiday, LeavePolicy } from '../types';
+import { supabase } from './supabaseClient';
 
-// Constants for LocalStorage keys
+const checkSupabase = () => {
+  if (!supabase) {
+    console.warn('Supabase client is not initialized. Please ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in your environment variables.');
+    return false;
+  }
+  return true;
+};
+
+// Constants for LocalStorage keys (keeping for session only)
 const LS_API_CONFIG = 'nexushrm_api_config';
-const LS_LOCAL_EMPLOYEES = 'easyhr_local_employees';
-const LS_ORG_SETTINGS = 'easyhr_org_settings';
-const LS_LEAVE_REQUESTS = 'nexushrm_leave_requests';
-const LS_COMPANIES = 'nexushrm_companies';
 const LS_AUTH_SESSION = 'nexushrm_auth_session';
 
 const DEFAULT_BASE_URL = 'https://test.api-inovace360.com/api/v1';
@@ -122,23 +127,7 @@ const DEFAULT_ORG_SETTINGS: OrgSettings = {
   ]
 };
 
-// --- MULTI-TENANCY HELPERS ---
-const getTenantKey = (baseKey: string, companyId: string) => `tenant_${companyId}_${baseKey}`;
-
-export const getCompanies = (): Company[] => {
-  const stored = localStorage.getItem(LS_COMPANIES);
-  return stored ? JSON.parse(stored) : [];
-};
-
-export const getCompanyById = (id: string): Company | null => {
-  const companies = getCompanies();
-  return companies.find(c => c.id === id) || null;
-};
-
-export const saveCompanies = (companies: Company[]) => {
-  localStorage.setItem(LS_COMPANIES, JSON.stringify(companies));
-};
-
+// --- AUTH SESSION HELPERS (Kept in LocalStorage for persistence) ---
 export const getCurrentSession = (): AuthSession | null => {
   const stored = localStorage.getItem(LS_AUTH_SESSION);
   return stored ? JSON.parse(stored) : null;
@@ -152,56 +141,157 @@ export const setCurrentSession = (session: AuthSession | null) => {
   }
 };
 
-export const getOrgSettings = (): OrgSettings => {
-  const session = getCurrentSession();
-  const companyId = session?.companyId || 'default';
-  const key = getTenantKey(LS_ORG_SETTINGS, companyId);
-  const stored = localStorage.getItem(key);
-  
-  if (!stored) return DEFAULT_ORG_SETTINGS;
-  
+// --- SUPABASE DATA ACCESS ---
+
+export const getCompanies = async (): Promise<Company[]> => {
   try {
-    const parsed = JSON.parse(stored);
+    if (!checkSupabase()) return [];
+    const { data, error } = await supabase.from('companies').select('*');
+    if (error) {
+      console.error('Error fetching companies:', error);
+      return [];
+    }
+    return data.map((item: any) => ({
+      id: item.id,
+      name: item.name,
+      adminEmail: item.admin_email,
+      adminPassword: item.admin_password,
+      createdAt: item.created_at
+    }));
+  } catch (err) {
+    console.error(err);
+    return [];
+  }
+};
+
+export const getCompanyById = async (id: string): Promise<Company | null> => {
+  try {
+    if (!checkSupabase()) return null;
+    const { data, error } = await supabase.from('companies').select('*').eq('id', id).single();
+    if (error || !data) return null;
+    return {
+      id: data.id,
+      name: data.name,
+      adminEmail: data.admin_email,
+      adminPassword: data.admin_password,
+      createdAt: data.created_at
+    };
+  } catch (err) {
+    console.error(err);
+    return null;
+  }
+};
+
+export const saveCompanies = async (companies: Company[]) => {
+  try {
+    if (!checkSupabase()) return;
+    // In a real app we'd handle upsert better, but since the UI sends the whole list:
+    for (const company of companies) {
+      const { error } = await supabase.from('companies').upsert({
+        id: company.id.length > 10 ? company.id : undefined, // Check if it looks like a UUID
+        name: company.name,
+        admin_email: company.adminEmail,
+        admin_password: company.adminPassword
+      });
+      if (error) console.error('Error saving company:', error);
+    }
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+export const createCompany = async (company: Omit<Company, 'id' | 'createdAt'>): Promise<Company | null> => {
+  try {
+    if (!checkSupabase()) return null;
+    const { data, error } = await supabase.from('companies').insert({
+      name: company.name,
+      admin_email: company.adminEmail,
+      admin_password: company.adminPassword
+    }).select().single();
     
-    // Migration: Convert string[] shifts to Shift[] objects if needed
-    let shifts = parsed.shifts || [];
-    if (shifts.length > 0 && typeof shifts[0] === 'string') {
-      shifts = shifts.map((name: string, index: number) => ({
-        id: String(index + 1),
-        name: name,
-        startTime: '09:00 am',
-        endTime: '06:00 pm',
-        lateAfter: '09:10 am',
-        earlyExitBefore: '05:50 pm'
-      }));
+    if (error) {
+       console.error('Error creating company:', error);
+       return null;
     }
 
-    // Migration for leavePolicies
-    let leavePolicies = parsed.leavePolicies || [];
-    if (leavePolicies.length > 0 && typeof leavePolicies[0] === 'string') {
-      leavePolicies = leavePolicies.map((name: string, index: number) => ({
-        id: String(index + 1),
-        name: name,
-        categories: []
-      }));
+    // Create default org settings for new company
+    await supabase.from('org_settings').insert({
+      company_id: data.id,
+      ...DEFAULT_ORG_SETTINGS
+    });
+
+    return {
+      id: data.id,
+      name: data.name,
+      adminEmail: data.admin_email,
+      adminPassword: data.admin_password,
+      createdAt: data.created_at
+    };
+  } catch (err) {
+    console.error(err);
+    return null;
+  }
+};
+
+export const deleteCompany = async (id: string) => {
+  try {
+    if (!checkSupabase()) return;
+    const { error } = await supabase.from('companies').delete().eq('id', id);
+    if (error) console.error('Error deleting company:', error);
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+export const getOrgSettings = async (): Promise<OrgSettings> => {
+  try {
+    if (!checkSupabase()) return DEFAULT_ORG_SETTINGS;
+    const session = getCurrentSession();
+    const companyId = session?.companyId;
+    if (!companyId) return DEFAULT_ORG_SETTINGS;
+
+    const { data, error } = await supabase.from('org_settings').select('*').eq('company_id', companyId).single();
+    if (error || !data) {
+      return DEFAULT_ORG_SETTINGS;
     }
 
     return {
-      ...DEFAULT_ORG_SETTINGS,
-      ...parsed,
-      shifts: shifts.length > 0 ? shifts : DEFAULT_ORG_SETTINGS.shifts,
-      leavePolicies: leavePolicies.length > 0 ? leavePolicies : DEFAULT_ORG_SETTINGS.leavePolicies
+      departments: data.departments || [],
+      designations: data.designations || [],
+      employmentTypes: data.employment_types || [],
+      workplaces: data.workplaces || [],
+      shifts: data.shifts || [],
+      leavePolicies: data.leave_policies || [],
+      holidays: data.holidays || []
     };
-  } catch (e) {
+  } catch (err) {
+    console.error(err);
     return DEFAULT_ORG_SETTINGS;
   }
 };
 
-export const saveOrgSettings = (settings: OrgSettings) => {
-  const session = getCurrentSession();
-  const companyId = session?.companyId || 'default';
-  const key = getTenantKey(LS_ORG_SETTINGS, companyId);
-  localStorage.setItem(key, JSON.stringify(settings));
+export const saveOrgSettings = async (settings: OrgSettings) => {
+  try {
+    if (!checkSupabase()) return;
+    const session = getCurrentSession();
+    const companyId = session?.companyId;
+    if (!companyId) return;
+
+    const { error } = await supabase.from('org_settings').upsert({
+      company_id: companyId,
+      departments: settings.departments,
+      designations: settings.designations,
+      employment_types: settings.employmentTypes,
+      workplaces: settings.workplaces,
+      shifts: settings.shifts,
+      leave_policies: settings.leavePolicies,
+      holidays: settings.holidays
+    }, { onConflict: 'company_id' });
+
+    if (error) console.error('Error saving org settings:', error);
+  } catch (err) {
+    console.error(err);
+  }
 };
 
 export const getApiConfig = (): ApiConfig => {
@@ -213,69 +303,163 @@ export const saveApiConfig = (config: ApiConfig) => {
   localStorage.setItem(LS_API_CONFIG, JSON.stringify(config));
 };
 
-// --- LOCAL EMPLOYEE PERSISTENCE ---
-export const getLocalEmployees = (): Employee[] => {
-  const session = getCurrentSession();
-  const companyId = session?.companyId || 'default';
-  const key = getTenantKey(LS_LOCAL_EMPLOYEES, companyId);
-  const stored = localStorage.getItem(key);
-  return stored ? JSON.parse(stored) : [];
-};
+// --- EMPLOYEE PERSISTENCE ---
+export const getLocalEmployees = async (): Promise<Employee[]> => {
+  try {
+    if (!checkSupabase()) return [];
+    const session = getCurrentSession();
+    const companyId = session?.companyId;
+    if (!companyId) return [];
 
-export const saveLocalEmployee = (employee: Employee) => {
-  const session = getCurrentSession();
-  const companyId = session?.companyId || 'default';
-  const key = getTenantKey(LS_LOCAL_EMPLOYEES, companyId);
-  const local = getLocalEmployees();
-  const index = local.findIndex(e => e.id === employee.id);
-  if (index >= 0) {
-    local[index] = employee;
-  } else {
-    local.push(employee);
+    const { data, error } = await supabase.from('employees').select('*').eq('company_id', companyId);
+    if (error) {
+      console.error('Error fetching employees:', error);
+      return [];
+    }
+
+    return data.map((item: any) => ({
+      id: item.id,
+      name: item.name,
+      designation: item.designation,
+      department: item.department,
+      status: item.status,
+      joinDate: item.join_date,
+      endDate: item.end_date,
+      email: item.email,
+      phone: item.phone,
+      avatar: item.avatar,
+      zkDeviceId: item.zk_device_id,
+      shift: item.shift,
+      shiftEffectiveDate: item.shift_effective_date,
+      employmentType: item.employment_type,
+      gender: item.gender,
+      leavePolicy: item.leave_policy,
+      workplace: item.workplace,
+      lineManager: item.line_manager,
+      isAdmin: item.is_admin,
+      isLineManager: item.is_line_manager,
+      password: item.password
+    }));
+  } catch (err) {
+    console.error(err);
+    return [];
   }
-  localStorage.setItem(key, JSON.stringify(local));
 };
 
-export const deleteLocalEmployee = (id: string) => {
-  const session = getCurrentSession();
-  const companyId = session?.companyId || 'default';
-  const key = getTenantKey(LS_LOCAL_EMPLOYEES, companyId);
-  const local = getLocalEmployees().filter(e => e.id !== id);
-  localStorage.setItem(key, JSON.stringify(local));
+export const saveLocalEmployee = async (employee: Employee) => {
+  try {
+    if (!checkSupabase()) return;
+    const session = getCurrentSession();
+    const companyId = session?.companyId;
+    if (!companyId) return;
+
+    const { error } = await supabase.from('employees').upsert({
+      id: employee.id,
+      company_id: companyId,
+      name: employee.name,
+      designation: employee.designation,
+      department: employee.department,
+      status: employee.status,
+      join_date: employee.joinDate,
+      end_date: employee.endDate,
+      email: employee.email,
+      phone: employee.phone,
+      avatar: employee.avatar,
+      zk_device_id: employee.zkDeviceId,
+      shift: employee.shift,
+      shift_effective_date: employee.shiftEffectiveDate,
+      employment_type: employee.employmentType,
+      gender: employee.gender,
+      leave_policy: employee.leavePolicy,
+      workplace: employee.workplace,
+      line_manager: employee.lineManager,
+      is_admin: employee.isAdmin,
+      is_line_manager: employee.isLineManager,
+      password: employee.password
+    });
+
+    if (error) console.error('Error saving employee:', error);
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+export const deleteLocalEmployee = async (id: string) => {
+  try {
+    if (!checkSupabase()) return;
+    const { error } = await supabase.from('employees').delete().eq('id', id);
+    if (error) console.error('Error deleting employee:', error);
+  } catch (err) {
+    console.error(err);
+  }
 };
 
 // --- LEAVE REQUEST PERSISTENCE ---
-export const getLeaveRequests = (): LeaveRequest[] => {
-  const session = getCurrentSession();
-  const companyId = session?.companyId || 'default';
-  const key = getTenantKey(LS_LEAVE_REQUESTS, companyId);
-  const stored = localStorage.getItem(key);
-  return stored ? JSON.parse(stored) : [];
-};
+export const getLeaveRequests = async (): Promise<LeaveRequest[]> => {
+  try {
+    if (!checkSupabase()) return [];
+    const session = getCurrentSession();
+    const companyId = session?.companyId;
+    if (!companyId) return [];
 
-export const saveLeaveRequest = (request: LeaveRequest) => {
-  const session = getCurrentSession();
-  const companyId = session?.companyId || 'default';
-  const key = getTenantKey(LS_LEAVE_REQUESTS, companyId);
-  const requests = getLeaveRequests();
-  const index = requests.findIndex(r => r.id === request.id);
-  if (index >= 0) {
-    requests[index] = request;
-  } else {
-    requests.push(request);
+    const { data, error } = await supabase.from('leave_requests').select('*').eq('company_id', companyId);
+    if (error) {
+      console.error('Error fetching leave requests:', error);
+      return [];
+    }
+
+    return data.map((item: any) => ({
+      id: item.id,
+      employeeId: item.employee_id,
+      employeeName: item.employee_name,
+      leaveCategory: item.leave_category,
+      startDate: item.start_date,
+      endDate: item.end_date,
+      reason: item.reason,
+      status: item.status,
+      appliedDate: item.applied_date,
+      attachment: item.attachment
+    }));
+  } catch (err) {
+    console.error(err);
+    return [];
   }
-  localStorage.setItem(key, JSON.stringify(requests));
 };
 
-export const updateLeaveRequestStatus = (id: string, status: 'Approved' | 'Rejected') => {
-  const session = getCurrentSession();
-  const companyId = session?.companyId || 'default';
-  const key = getTenantKey(LS_LEAVE_REQUESTS, companyId);
-  const requests = getLeaveRequests();
-  const index = requests.findIndex(r => r.id === id);
-  if (index >= 0) {
-    requests[index].status = status;
-    localStorage.setItem(key, JSON.stringify(requests));
+export const saveLeaveRequest = async (request: LeaveRequest) => {
+  try {
+    if (!checkSupabase()) return;
+    const session = getCurrentSession();
+    const companyId = session?.companyId;
+    if (!companyId) return;
+
+    const { error } = await supabase.from('leave_requests').upsert({
+      id: request.id.length > 20 ? request.id : undefined,
+      company_id: companyId,
+      employee_id: request.employeeId,
+      employee_name: request.employeeName,
+      leave_category: request.leaveCategory,
+      start_date: request.startDate,
+      end_date: request.endDate,
+      reason: request.reason,
+      status: request.status,
+      applied_date: request.appliedDate,
+      attachment: request.attachment
+    });
+
+    if (error) console.error('Error saving leave request:', error);
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+export const updateLeaveRequestStatus = async (id: string, status: 'Approved' | 'Rejected') => {
+  try {
+    if (!checkSupabase()) return;
+    const { error } = await supabase.from('leave_requests').update({ status }).eq('id', id);
+    if (error) console.error('Error updating leave request status:', error);
+  } catch (err) {
+    console.error(err);
   }
 };
 
@@ -293,26 +477,72 @@ export interface MobilePunch {
 }
 
 // --- MOBILE PUNCH PERSISTENCE ---
-export const getMobilePunches = (): MobilePunch[] => {
-  const session = getCurrentSession();
-  const companyId = session?.companyId || 'default';
-  const key = getTenantKey(LS_MOBILE_PUNCHES, companyId);
-  const stored = localStorage.getItem(key);
-  return stored ? JSON.parse(stored) : [];
+export const getMobilePunches = async (): Promise<MobilePunch[]> => {
+  try {
+    if (!checkSupabase()) return [];
+    const session = getCurrentSession();
+    const companyId = session?.companyId;
+    if (!companyId) return [];
+
+    const { data, error } = await supabase.from('mobile_punches').select('*').eq('company_id', companyId);
+    if (error) {
+      console.error('Error fetching mobile punches:', error);
+      return [];
+    }
+
+    return data.map((item: any) => ({
+      id: item.id,
+      employeeId: item.employee_id,
+      employeeName: item.employee_name,
+      type: item.type,
+      timestamp: item.timestamp,
+      latitude: item.latitude,
+      longitude: item.longitude,
+      address: item.address
+    }));
+  } catch (err) {
+    console.error(err);
+    return [];
+  }
 };
 
-export const saveMobilePunch = (punch: Omit<MobilePunch, 'id'>) => {
-  const session = getCurrentSession();
-  const companyId = session?.companyId || 'default';
-  const key = getTenantKey(LS_MOBILE_PUNCHES, companyId);
-  const punches = getMobilePunches();
-  const newPunch: MobilePunch = {
-    ...punch,
-    id: Math.random().toString(36).substr(2, 9)
-  };
-  punches.push(newPunch);
-  localStorage.setItem(key, JSON.stringify(punches));
-  return newPunch;
+export const saveMobilePunch = async (punch: Omit<MobilePunch, 'id'>): Promise<MobilePunch | null> => {
+  try {
+    if (!checkSupabase()) return null;
+    const session = getCurrentSession();
+    const companyId = session?.companyId;
+    if (!companyId) return null;
+
+    const { data, error } = await supabase.from('mobile_punches').insert({
+      company_id: companyId,
+      employee_id: punch.employeeId,
+      employee_name: punch.employeeName,
+      type: punch.type,
+      timestamp: punch.timestamp,
+      latitude: punch.latitude,
+      longitude: punch.longitude,
+      address: punch.address
+    }).select().single();
+
+    if (error) {
+       console.error('Error saving mobile punch:', error);
+       return null;
+    }
+
+    return {
+      id: data.id,
+      employeeId: data.employee_id,
+      employeeName: data.employee_name,
+      type: data.type,
+      timestamp: data.timestamp,
+      latitude: data.latitude,
+      longitude: data.longitude,
+      address: data.address
+    };
+  } catch (err) {
+    console.error(err);
+    return null;
+  }
 };
 
 // --- REAL API IMPLEMENTATION ---
@@ -338,7 +568,7 @@ const apiFetch = async (endpoint: string) => {
 };
 
 export const fetchEmployees = async (): Promise<Employee[]> => {
-  const localEmployees = getLocalEmployees();
+  const localEmployees = await getLocalEmployees();
   
   try {
     const config = getApiConfig();
@@ -476,7 +706,7 @@ const getEffectiveShift = (emp: Employee, date: string, orgShifts: Shift[]) => {
 export const fetchAttendance = async (startDate?: string, endDate?: string): Promise<AttendanceRecord[]> => {
   try {
     const config = getApiConfig();
-    const orgSettings = getOrgSettings();
+    const orgSettings = await getOrgSettings();
     const shifts = orgSettings.shifts;
     
     // Default dates if not provided: Today
@@ -535,7 +765,7 @@ export const fetchAttendance = async (startDate?: string, endDate?: string): Pro
     }
 
     // Group Mobile Punches by employee and date
-    const mobilePunches = getMobilePunches();
+    const mobilePunches = await getMobilePunches();
     const mobilePunchesMap = new Map<string, { in?: string, out?: string }>();
     mobilePunches.forEach(p => {
       const dateKey = p.timestamp.split('T')[0];
@@ -552,7 +782,8 @@ export const fetchAttendance = async (startDate?: string, endDate?: string): Pro
     });
 
     const holidays = orgSettings.holidays || [];
-    const leaveRequests = getLeaveRequests().filter(r => r.status === 'Approved');
+    const allLeaveRequests = await getLeaveRequests();
+    const leaveRequests = allLeaveRequests.filter(r => r.status === 'Approved');
 
     // Helper for formatting
     const formatTime = (dateTimeStr: string) => {

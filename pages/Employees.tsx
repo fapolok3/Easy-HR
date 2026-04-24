@@ -32,13 +32,18 @@ const Employees = () => {
     lineManager: ''
   });
 
-  const loadEmployees = () => {
+  const loadEmployees = async () => {
     setLoading(true);
-    fetchEmployees().then(data => {
+    try {
+      const data = await fetchEmployees();
       setEmployees(data);
+      const settings = await getOrgSettings();
+      setOrgSettings(settings);
+    } catch (err) {
+      console.error(err);
+    } finally {
       setLoading(false);
-    });
-    setOrgSettings(getOrgSettings());
+    }
   };
 
   useEffect(() => {

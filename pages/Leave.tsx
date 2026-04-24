@@ -31,7 +31,11 @@ const Leave = () => {
   });
 
   useEffect(() => {
-    setOrgSettings(getOrgSettings());
+    const loadSettings = async () => {
+      const settings = await getOrgSettings();
+      setOrgSettings(settings);
+    };
+    loadSettings();
   }, []);
 
   // --- Policy Actions ---
@@ -46,7 +50,7 @@ const Leave = () => {
     setIsPolicyModalOpen(true);
   };
 
-  const handleSavePolicy = (e: React.FormEvent) => {
+  const handleSavePolicy = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!policyName.trim()) return;
 
@@ -63,15 +67,15 @@ const Leave = () => {
 
     const updated = { ...orgSettings, leavePolicies: updatedPolicies };
     setOrgSettings(updated);
-    saveOrgSettings(updated);
+    await saveOrgSettings(updated);
     setIsPolicyModalOpen(false);
   };
 
-  const handleRemovePolicy = (id: string) => {
+  const handleRemovePolicy = async (id: string) => {
     const updatedPolicies = orgSettings.leavePolicies.filter(p => p.id !== id);
     const updated = { ...orgSettings, leavePolicies: updatedPolicies };
     setOrgSettings(updated);
-    saveOrgSettings(updated);
+    await saveOrgSettings(updated);
   };
 
   // --- Category Actions ---
@@ -94,7 +98,7 @@ const Leave = () => {
     setIsCategoryModalOpen(true);
   };
 
-  const handleSaveCategory = (e: React.FormEvent) => {
+  const handleSaveCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPolicyId || !categoryFormData.name) return;
 
@@ -116,11 +120,11 @@ const Leave = () => {
 
     const updated = { ...orgSettings, leavePolicies: updatedPolicies };
     setOrgSettings(updated);
-    saveOrgSettings(updated);
+    await saveOrgSettings(updated);
     setIsCategoryModalOpen(false);
   };
 
-  const handleRemoveCategory = (policyId: string, categoryId: string) => {
+  const handleRemoveCategory = async (policyId: string, categoryId: string) => {
     const updatedPolicies = orgSettings.leavePolicies.map(p => {
       if (p.id === policyId) {
         return { ...p, categories: p.categories.filter(c => c.id !== categoryId) };
@@ -129,7 +133,7 @@ const Leave = () => {
     });
     const updated = { ...orgSettings, leavePolicies: updatedPolicies };
     setOrgSettings(updated);
-    saveOrgSettings(updated);
+    await saveOrgSettings(updated);
   };
 
   return (

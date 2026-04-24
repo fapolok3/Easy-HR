@@ -19,13 +19,17 @@ const Settings = () => {
   const [newItem, setNewItem] = useState('');
 
   useEffect(() => {
-    const config = getApiConfig();
-    setApiConfig({
-      baseUrl: config.baseUrl || 'https://test.api-inovace360.com/api/v1',
-      token: config.token || '',
-      secretKey: config.secretKey || ''
-    });
-    setOrgSettings(getOrgSettings());
+    const loadSettings = async () => {
+      const config = getApiConfig();
+      setApiConfig({
+        baseUrl: config.baseUrl || 'https://test.api-inovace360.com/api/v1',
+        token: config.token || '',
+        secretKey: config.secretKey || ''
+      });
+      const settings = await getOrgSettings();
+      setOrgSettings(settings);
+    };
+    loadSettings();
   }, []);
 
   const handleSaveApi = async (e: React.FormEvent) => {
@@ -48,7 +52,7 @@ const Settings = () => {
     }
   };
 
-  const handleAddItem = (e: React.FormEvent, key: keyof OrgSettings) => {
+  const handleAddItem = async (e: React.FormEvent, key: keyof OrgSettings) => {
     e.preventDefault();
     if (!newItem.trim()) return;
     
@@ -60,17 +64,17 @@ const Settings = () => {
       [key]: [...(orgSettings[key] as string[]), newItem.trim()]
     };
     setOrgSettings(updated);
-    saveOrgSettings(updated);
+    await saveOrgSettings(updated);
     setNewItem('');
   };
 
-  const handleRemoveItem = (key: keyof OrgSettings, index: number) => {
+  const handleRemoveItem = async (key: keyof OrgSettings, index: number) => {
     const updated = {
       ...orgSettings,
       [key]: orgSettings[key].filter((_, i) => i !== index)
     };
     setOrgSettings(updated);
-    saveOrgSettings(updated);
+    await saveOrgSettings(updated);
   };
 
   const tabs = [

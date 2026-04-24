@@ -10,12 +10,12 @@ const Login = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
     // Check Super Admin
-    if (email === 'fapolok3@gmail.com' && password === '123456') {
+    if (email === 'fapolok3@gmail.com' && password === 'Iamfapolok@1') {
       const session: AuthSession = {
         userEmail: email,
         isSuperAdmin: true
@@ -26,18 +26,22 @@ const Login = () => {
     }
 
     // Check Company Admins
-    const companies = getCompanies();
-    const company = companies.find(c => c.adminEmail === email && c.adminPassword === password);
-    
-    if (company) {
-      const session: AuthSession = {
-        userEmail: email,
-        isSuperAdmin: false,
-        companyId: company.id
-      };
-      setCurrentSession(session);
-      navigate('/');
-      return;
+    try {
+      const companies = await getCompanies();
+      const company = companies.find(c => c.adminEmail === email && c.adminPassword === password);
+      
+      if (company) {
+        const session: AuthSession = {
+          userEmail: email,
+          isSuperAdmin: false,
+          companyId: company.id
+        };
+        setCurrentSession(session);
+        navigate('/');
+        return;
+      }
+    } catch (err) {
+      console.error(err);
     }
 
     setError('Invalid email or password');

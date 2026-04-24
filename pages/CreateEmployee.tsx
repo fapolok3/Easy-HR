@@ -33,10 +33,14 @@ const CreateEmployee = () => {
   });
 
   useEffect(() => {
-    setOrgSettings(getOrgSettings());
+    const loadSettings = async () => {
+      const settings = await getOrgSettings();
+      setOrgSettings(settings);
+    };
+    loadSettings();
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
@@ -49,10 +53,11 @@ const CreateEmployee = () => {
       joinDate: formData.joinDate,
       email: formData.email,
       phone: '-',
-      gender: formData.gender
+      gender: formData.gender,
+      zkDeviceId: formData.deviceId
     };
 
-    saveLocalEmployee(newEmployee);
+    await saveLocalEmployee(newEmployee);
     
     setLoading(false);
     setShowNotification(true);

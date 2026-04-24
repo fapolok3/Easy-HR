@@ -12,13 +12,18 @@ const Approvals = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    setRequests(getLeaveRequests());
-    setIsLoading(false);
+    const loadRequests = async () => {
+      const data = await getLeaveRequests();
+      setRequests(data);
+      setIsLoading(false);
+    };
+    loadRequests();
   }, []);
 
-  const handleAction = (id: string, status: 'Approved' | 'Rejected') => {
-    updateLeaveRequestStatus(id, status);
-    setRequests(getLeaveRequests());
+  const handleAction = async (id: string, status: 'Approved' | 'Rejected') => {
+    await updateLeaveRequestStatus(id, status);
+    const data = await getLeaveRequests();
+    setRequests(data);
   };
 
   if (isLoading) {

@@ -28,13 +28,14 @@ const ApplyLeave = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [empData, settingsData] = await Promise.all([
+        const [empData, settingsData, leaveData] = await Promise.all([
           fetchEmployees(),
-          getOrgSettings()
+          getOrgSettings(),
+          getLeaveRequests()
         ]);
         setEmployees(empData);
         setOrgSettings(settingsData);
-        setLeaveRequests(getLeaveRequests());
+        setLeaveRequests(leaveData);
       } catch (error) {
         console.error("Failed to load data:", error);
       } finally {
@@ -61,7 +62,7 @@ const ApplyLeave = () => {
       }, 0);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEmployee || !selectedCategory || !startDate || !endDate) return;
 
@@ -87,8 +88,9 @@ const ApplyLeave = () => {
       appliedDate: new Date().toISOString().split('T')[0]
     };
 
-    saveLeaveRequest(newRequest);
-    setLeaveRequests(getLeaveRequests());
+    await saveLeaveRequest(newRequest);
+    const updatedLeaves = await getLeaveRequests();
+    setLeaveRequests(updatedLeaves);
     
     // Reset form
     setSelectedCategory('');

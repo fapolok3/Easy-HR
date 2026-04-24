@@ -25,7 +25,11 @@ const Shifts = () => {
   });
 
   useEffect(() => {
-    setOrgSettings(getOrgSettings());
+    const loadSettings = async () => {
+      const settings = await getOrgSettings();
+      setOrgSettings(settings);
+    };
+    loadSettings();
   }, []);
 
   const handleOpenShiftModal = (shift?: Shift) => {
@@ -49,7 +53,7 @@ const Shifts = () => {
     setIsShiftModalOpen(true);
   };
 
-  const handleSaveShift = (e: React.FormEvent) => {
+  const handleSaveShift = async (e: React.FormEvent) => {
     e.preventDefault();
     let updatedShifts = [...orgSettings.shifts];
     
@@ -65,15 +69,15 @@ const Shifts = () => {
 
     const updated = { ...orgSettings, shifts: updatedShifts };
     setOrgSettings(updated);
-    saveOrgSettings(updated);
+    await saveOrgSettings(updated);
     setIsShiftModalOpen(false);
   };
 
-  const handleRemoveShift = (index: number) => {
+  const handleRemoveShift = async (index: number) => {
     const updatedShifts = orgSettings.shifts.filter((_, i) => i !== index);
     const updated = { ...orgSettings, shifts: updatedShifts };
     setOrgSettings(updated);
-    saveOrgSettings(updated);
+    await saveOrgSettings(updated);
   };
 
   return (

@@ -33,12 +33,15 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
   const [companyName, setCompanyName] = useState('Company HRM');
 
   useEffect(() => {
-    if (session && session.companyId) {
-      const company = getCompanyById(session.companyId);
-      if (company) {
-        setCompanyName(company.name);
+    const loadCompany = async () => {
+      if (session && session.companyId) {
+        const company = await getCompanyById(session.companyId);
+        if (company) {
+          setCompanyName(company.name);
+        }
       }
-    }
+    };
+    loadCompany();
   }, [session]);
 
   if (isLoginPage) return <>{children}</>;
