@@ -137,7 +137,7 @@ export const createCompany = async (company: Omit<Company, 'id' | 'createdAt'>):
     throw new Error('Supabase not initialized');
   }
   
-  // 1. Create the company - using a two step process to avoid .single() issues if RLS is complex
+  // 1. Create the company
   const { data: inserts, error: insertError } = await supabase.from('companies').insert({
     name: company.name,
     admin_email: company.adminEmail,
@@ -147,6 +147,7 @@ export const createCompany = async (company: Omit<Company, 'id' | 'createdAt'>):
   if (insertError) {
      console.error('Error creating company record:', insertError);
      if (insertError.code === '23505') throw new Error('A company with this admin email already exists.');
+     if (insertError.code === '42501') throw new Error('Permission denied: Please run the RLS policies in Supabase SQL Editor.');
      throw new Error(insertError.message || 'Failed to create company record');
   }
 
