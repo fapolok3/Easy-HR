@@ -21,7 +21,7 @@ const Settings = () => {
 
   useEffect(() => {
     const loadSettings = async () => {
-      const config = getApiConfig();
+      const config = await getApiConfig();
       setApiConfig({
         baseUrl: config.baseUrl || 'https://test.api-inovace360.com/api/v1',
         token: config.token || '',
@@ -41,7 +41,7 @@ const Settings = () => {
     try {
       const isValid = await validateToken(apiConfig.token, apiConfig.baseUrl);
       if (isValid) {
-        saveApiConfig(apiConfig);
+        await saveApiConfig(apiConfig);
         setStatus('success');
       } else {
         setStatus('error');

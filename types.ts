@@ -43,6 +43,7 @@ export interface AttendanceRecord {
   isLate?: boolean;
   isEarlyExit?: boolean;
   isOffDay?: boolean;
+  isHoliday?: boolean;
   device?: string;
   hours?: string;
   expectedHours?: string;

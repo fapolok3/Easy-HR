@@ -239,13 +239,51 @@ export const saveOrgSettings = async (settings: OrgSettings) => {
   }
 };
 
-export const getApiConfig = (): ApiConfig => {
-  const stored = localStorage.getItem(LS_API_CONFIG);
-  return stored ? JSON.parse(stored) : { baseUrl: DEFAULT_BASE_URL, token: '' };
+export const getApiConfig = async (): Promise<ApiConfig> => {
+  try {
+    if (!checkSupabase()) return { baseUrl: DEFAULT_BASE_URL, token: '' };
+    const session = getCurrentSession();
+    const companyId = session?.companyId;
+    if (!companyId) {
+      const stored = localStorage.getItem(LS_API_CONFIG);
+      return stored ? JSON.parse(stored) : { baseUrl: DEFAULT_BASE_URL, token: '' };
+    }
+
+    const { data, error } = await supabase.from('api_config').select('*').eq('company_id', companyId).maybeSingle();
+    if (error || !data) {
+      const stored = localStorage.getItem(LS_API_CONFIG);
+      return stored ? JSON.parse(stored) : { baseUrl: DEFAULT_BASE_URL, token: '' };
+    }
+
+    return {
+      baseUrl: data.base_url,
+      token: data.token || ''
+    };
+  } catch (err) {
+    console.error(err);
+    return { baseUrl: DEFAULT_BASE_URL, token: '' };
+  }
 };
 
-export const saveApiConfig = (config: ApiConfig) => {
+export const saveApiConfig = async (config: ApiConfig) => {
   localStorage.setItem(LS_API_CONFIG, JSON.stringify(config));
+  
+  try {
+    if (!checkSupabase()) return;
+    const session = getCurrentSession();
+    const companyId = session?.companyId;
+    if (!companyId) return;
+
+    const { error } = await supabase.from('api_config').upsert({
+      company_id: companyId,
+      base_url: config.baseUrl,
+      token: config.token
+    }, { onConflict: 'company_id' });
+
+    if (error) console.error('Error saving api config to supabase:', error);
+  } catch (err) {
+    console.error(err);
+  }
 };
 
 // --- EMPLOYEE PERSISTENCE ---
@@ -483,7 +521,7 @@ export const saveMobilePunch = async (punch: Omit<MobilePunch, 'id'>): Promise<M
 
 // Generic fetch wrapper with token injection
 const apiFetch = async (endpoint: string) => {
-  const config = getApiConfig();
+  const config = await getApiConfig();
   if (!config.token) throw new Error("Missing API Token");
   
   const baseUrl = config.baseUrl.replace(/\/$/, ''); // Remove trailing slash
@@ -505,7 +543,7 @@ export const fetchEmployees = async (): Promise<Employee[]> => {
   const localEmployees = await getLocalEmployees();
   
   try {
-    const config = getApiConfig();
+    const config = await getApiConfig();
     if (!config.token) {
       return localEmployees;
     }
@@ -561,7 +599,7 @@ export const fetchEmployees = async (): Promise<Employee[]> => {
 
 export const fetchDevices = async (): Promise<Device[]> => {
   try {
-    const config = getApiConfig();
+    const config = await getApiConfig();
     if (!config.token) return [];
     
     // Call: GET {{BASE URL}}/devices?api_token={{API TOKEN}}
@@ -639,7 +677,7 @@ const getEffectiveShift = (emp: Employee, date: string, orgShifts: Shift[]) => {
 
 export const fetchAttendance = async (startDate?: string, endDate?: string): Promise<AttendanceRecord[]> => {
   try {
-    const config = getApiConfig();
+    const config = await getApiConfig();
     const orgSettings = await getOrgSettings();
     const shifts = orgSettings.shifts;
     
@@ -756,23 +794,32 @@ export const fetchAttendance = async (startDate?: string, endDate?: string): Pro
         let checkOut = '-';
         let hours = '-';
 
+        // Initialize display values if log exists
+        if (log) {
+          checkIn = formatTime(log.start);
+          checkOut = formatTime(log.end);
+          hours = log.hours || '-';
+        }
+
         if (isGlobalHoliday) {
           status = 'Holiday';
+          expectedHours = '0.00';
+          if (log && log.start) {
+            // Worked on holiday
+            status = 'Present'; 
+          }
         } else if (approvedLeave) {
           status = 'Leave';
+          expectedHours = '0.00'; // Or keep as 0? Usually leave doesn't expect hours
         } else if (isOffDay) {
-          // Check if person worked on off day
-          if (log) {
-            checkIn = formatTime(log.start);
-            checkOut = formatTime(log.end);
-            hours = log.hours || '-';
-            status = 'Present'; // Still Present but we'll mark as off-day in UI
-            expectedHours = '0.00';
-          } else {
-            status = 'Off Day';
+          status = 'Off Day';
+          expectedHours = '0.00';
+          if (log && log.start) {
+            // Worked on off day
+            status = 'Present';
           }
         } else {
-          // It's a working day
+          // Regular working day
           if (shift) {
             const startMins = parseTimeValue(shift.startTime);
             const endMins = parseTimeValue(shift.endTime);
@@ -783,13 +830,10 @@ export const fetchAttendance = async (startDate?: string, endDate?: string): Pro
             expectedHours = '8.00';
           }
 
-          if (log) {
-            checkIn = formatTime(log.start);
-            checkOut = formatTime(log.end);
-            hours = log.hours || '-';
-            status = log.start ? 'Present' : 'Absent';
+          if (log && log.start) {
+            status = 'Present';
 
-            if (shift && log.start) {
+            if (shift) {
               const checkInMins = parseTimeValue(checkIn);
               const lateAfterMins = parseTimeValue(shift.lateAfter);
               
@@ -809,6 +853,8 @@ export const fetchAttendance = async (startDate?: string, endDate?: string): Pro
                 }
               }
             }
+          } else {
+             status = 'Absent';
           }
         }
 
@@ -823,6 +869,7 @@ export const fetchAttendance = async (startDate?: string, endDate?: string): Pro
           isLate,
           isEarlyExit,
           isOffDay: !!isOffDay,
+          isHoliday: !!isGlobalHoliday,
           location: log ? 'Device Sync' : '-',
           hours,
           expectedHours
@@ -848,5 +895,53 @@ export const validateToken = async (token: string, baseUrl: string): Promise<boo
     return response.ok;
   } catch (error) {
     return false;
+  }
+};
+
+export const bulkUpdateEmployees = async (employees: Employee[], updates: Partial<Employee>) => {
+  try {
+    if (!checkSupabase()) return;
+    const session = getCurrentSession();
+    const companyId = session?.companyId;
+    if (!companyId) return;
+
+    const upsertData = employees.map(emp => {
+      const updated = { ...emp, ...updates };
+      return {
+        id: updated.id,
+        company_id: companyId,
+        name: updated.name,
+        designation: updated.designation,
+        department: updated.department,
+        status: updated.status,
+        join_date: updated.joinDate,
+        end_date: updated.endDate,
+        email: updated.email,
+        phone: updated.phone,
+        avatar: updated.avatar,
+        zk_device_id: updated.zkDeviceId,
+        shift: updated.shift,
+        shift_effective_date: updated.shiftEffectiveDate,
+        employment_type: updated.employmentType,
+        gender: updated.gender,
+        leave_policy: updated.leavePolicy,
+        workplace: updated.workplace,
+        line_manager: updated.lineManager,
+        is_admin: updated.isAdmin,
+        is_line_manager: updated.isLineManager,
+        password: updated.password
+      };
+    });
+
+    if (upsertData.length === 0) return;
+
+    const { error } = await supabase
+      .from('employees')
+      .upsert(upsertData);
+
+    if (error) throw error;
+  } catch (err) {
+    console.error('Error in bulk update:', err);
+    throw err;
   }
 };

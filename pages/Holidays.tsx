@@ -23,7 +23,11 @@ const Holidays = () => {
   });
 
   useEffect(() => {
-    setOrgSettings(getOrgSettings());
+    const loadData = async () => {
+      const settings = await getOrgSettings();
+      setOrgSettings(settings);
+    };
+    loadData();
   }, []);
 
   const handleOpenModal = (holiday?: Holiday) => {

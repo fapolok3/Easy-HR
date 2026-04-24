@@ -29,6 +29,7 @@ const CreateEmployee = () => {
     department: '',
     designation: '',
     shift: '',
+    shiftEffectiveDate: new Date().toISOString().split('T')[0],
     leavePolicy: '',
     joinDate: new Date().toISOString().split('T')[0]
   });
@@ -55,7 +56,10 @@ const CreateEmployee = () => {
       email: formData.email,
       phone: '-',
       gender: formData.gender,
-      zkDeviceId: formData.deviceId
+      zkDeviceId: formData.deviceId,
+      shift: formData.shift,
+      shiftEffectiveDate: formData.shiftEffectiveDate,
+      leavePolicy: formData.leavePolicy
     };
 
     await saveLocalEmployee(newEmployee);
@@ -176,9 +180,19 @@ const CreateEmployee = () => {
             onChange={e => setFormData({...formData, shift: e.target.value})}
             options={[
               { label: 'Please Select', value: '' },
-              ...orgSettings.shifts.map(s => ({ label: s.name, value: s.name }))
+              ...orgSettings.shifts.map(s => ({ label: s.name, value: s.id }))
             ]}
           />
+
+          {formData.shift && (
+            <Input 
+              label="Shift Effective Date" 
+              type="date" 
+              value={formData.shiftEffectiveDate}
+              onChange={e => setFormData({...formData, shiftEffectiveDate: e.target.value})}
+              required 
+            />
+          )}
           
           <Select 
             label="Leave Policy"

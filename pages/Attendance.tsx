@@ -358,18 +358,19 @@ const Attendance = () => {
                      {uniqueDates.map(date => {
                         const rec = records.find(r => r.employeeId === emp.id && r.date === date);
                         const isAbsent = !rec || rec.status === 'Absent' || rec.checkIn === '-';
-                        const isHoliday = rec?.status === 'Holiday';
-                        const isOffDayStatus = rec?.status === 'Off Day';
+                        const isHoliday = rec?.isHoliday;
+                        const isOffDayStatus = rec?.isOffDay && isAbsent;
                         const isLeave = rec?.status === 'Leave';
                         const workedOnOffDay = rec?.isOffDay && !isAbsent;
-                        const isLate = rec?.isLate && !workedOnOffDay;
+                        const workedOnHoliday = rec?.isHoliday && !isAbsent;
+                        const isLate = rec?.isLate && !workedOnOffDay && !workedOnHoliday;
                         const isEarlyExit = rec?.isEarlyExit;
                         
                         return (
                           <React.Fragment key={`${emp.id}-${date}`}>
                             <td className="p-1 border-r border-border align-middle min-w-[70px]">
-                               <div className={`p-1.5 rounded border flex flex-col items-center justify-center min-h-[40px] w-full shadow-sm transition-all ${isAbsent && !isHoliday && !isOffDayStatus && !isLeave ? 'bg-red-50 border-red-100' : (isHoliday || isOffDayStatus || isLeave) ? 'bg-slate-50 border-border' : isLate ? 'bg-red-50 border-red-200' : workedOnOffDay ? 'bg-blue-50 border-blue-100' : 'bg-emerald-50 border-emerald-100'}`}>
-                                  {isHoliday ? (
+                               <div className={`p-1.5 rounded border flex flex-col items-center justify-center min-h-[40px] w-full shadow-sm transition-all ${isAbsent && !isHoliday && !isOffDayStatus && !isLeave ? 'bg-red-50 border-red-100' : (isHoliday && isAbsent) || isOffDayStatus || isLeave ? 'bg-slate-50 border-border' : isLate ? 'bg-red-50 border-red-200' : workedOnHoliday ? 'bg-amber-50 border-amber-100' : workedOnOffDay ? 'bg-blue-50 border-blue-100' : 'bg-emerald-50 border-emerald-100'}`}>
+                                  {isHoliday && isAbsent ? (
                                     <span className="text-primary font-bold uppercase text-[8px]">Holiday</span>
                                   ) : isOffDayStatus ? (
                                     <span className="text-textMuted font-bold uppercase text-[8px]">Off Day</span>
@@ -380,21 +381,23 @@ const Attendance = () => {
                                   ) : (
                                     <div className="flex flex-col items-center">
                                        <div className="flex items-center gap-1">
-                                         <span className={`${isLate ? 'text-red-600' : workedOnOffDay ? 'text-blue-600' : 'text-emerald-700'} font-bold text-[10px]`}>{formatTimeTo12Hour(rec.checkIn)}</span>
-                                         {isLate && <span className="text-[10px] font-black text-red-600"> (L)</span>}
-                                         {workedOnOffDay && <span className="text-[10px] font-black text-blue-600">(OF)</span>}
+                                          <span className={`${isLate ? 'text-red-600' : workedOnHoliday ? 'text-amber-700' : workedOnOffDay ? 'text-blue-600' : 'text-emerald-700'} font-bold text-[10px]`}>{formatTimeTo12Hour(rec.checkIn)}</span>
+                                          {isLate && <span className="text-[10px] font-black text-red-600"> (L)</span>}
+                                          {workedOnHoliday && <span className="text-[10px] font-black text-amber-600"> (H)</span>}
+                                          {workedOnOffDay && <span className="text-[10px] font-black text-blue-600">(OF)</span>}
                                        </div>
                                     </div>
                                   )}
                                </div>
                             </td>
                             <td className="p-1 border-r border-border align-middle min-w-[70px]">
-                               <div className={`p-1.5 rounded border flex items-center justify-center min-h-[40px] w-full shadow-sm transition-all ${isEarlyExit ? 'bg-red-50 border-red-200' : (isHoliday || isOffDayStatus || isLeave) ? 'bg-slate-50 border-border' : workedOnOffDay ? 'bg-blue-50 border-blue-100' : 'bg-slate-50 border-slate-100'}`}>
+                               <div className={`p-1.5 rounded border flex items-center justify-center min-h-[40px] w-full shadow-sm transition-all ${isEarlyExit ? 'bg-red-50 border-red-200' : (isHoliday && isAbsent) || isOffDayStatus || isLeave ? 'bg-slate-50 border-border' : workedOnHoliday ? 'bg-amber-50 border-amber-100' : workedOnOffDay ? 'bg-blue-50 border-blue-100' : 'bg-slate-50 border-slate-100'}`}>
                                   <div className="flex items-center gap-1">
-                                    <span className={`${isEarlyExit ? 'text-red-600' : workedOnOffDay ? 'text-blue-600' : 'text-text'} font-medium text-[10px]`}>
+                                    <span className={`${isEarlyExit ? 'text-red-600' : workedOnHoliday ? 'text-amber-700' : workedOnOffDay ? 'text-blue-600' : 'text-text'} font-medium text-[10px]`}>
                                       {rec?.checkOut && rec.checkOut !== '-' ? formatTimeTo12Hour(rec.checkOut) : '-'}
                                     </span>
                                     {isEarlyExit && <span className="text-[10px] font-black text-red-600">EL</span>}
+                                    {workedOnHoliday && rec?.checkOut && rec.checkOut !== '-' && <span className="text-[10px] font-black text-amber-600"> (H)</span>}
                                     {workedOnOffDay && rec?.checkOut && rec.checkOut !== '-' && <span className="text-[10px] font-black text-blue-600">(OF)</span>}
                                   </div>
                                </div>

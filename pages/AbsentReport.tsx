@@ -13,8 +13,8 @@ const AbsentReport = () => {
     setLoading(true);
     try {
       const data = await fetchAttendance(date, date);
-      // Filter for absent records only (exclude Holiday, Off Day, Leave)
-      setRecords(data.filter(r => r.status === 'Absent'));
+      // Filter for absent records or those on an off day
+      setRecords(data.filter(r => r.status === 'Absent' || r.status === 'Off Day'));
     } catch (error) {
       console.error('Failed to fetch absent report:', error);
     } finally {
@@ -76,7 +76,9 @@ const AbsentReport = () => {
                     <td className="p-3 border-r border-border font-bold text-text">{rec.employeeName}</td>
                     <td className="p-3 border-r border-border text-center text-textMuted">{rec.date}</td>
                     <td className="p-3 text-center">
-                      <Badge variant="danger">ABSENT</Badge>
+                      <Badge variant={rec.status === 'Absent' ? 'danger' : 'default'}>
+                        {rec.status === 'Absent' ? 'ABSENT' : 'OFF DAY'}
+                      </Badge>
                     </td>
                   </tr>
                 ))

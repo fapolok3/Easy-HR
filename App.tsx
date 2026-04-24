@@ -12,6 +12,7 @@ import Leave from './pages/Leave';
 import ApplyLeave from './pages/ApplyLeave';
 import Approvals from './pages/Approvals';
 import CreateEmployee from './pages/CreateEmployee';
+import BulkManageEmployees from './pages/BulkManageEmployees';
 import IndividualAttendanceReport from './pages/IndividualAttendanceReport';
 import LateReport from './pages/LateReport';
 import AbsentReport from './pages/AbsentReport';
@@ -200,6 +201,7 @@ const App = () => {
           <Route path="/" element={<Layout><Dashboard /></Layout>} />
           <Route path="/employees" element={<Layout><Employees /></Layout>} />
           <Route path="/employees/create" element={<Layout><CreateEmployee /></Layout>} />
+          <Route path="/employees/bulk" element={<Layout><BulkManageEmployees /></Layout>} />
           <Route path="/employees/:id" element={<Layout><EmployeeProfile /></Layout>} />
           <Route path="/attendance" element={<Layout><Attendance /></Layout>} />
           <Route path="/attendance/individual" element={<Layout><IndividualAttendanceReport /></Layout>} />

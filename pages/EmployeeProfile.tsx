@@ -31,7 +31,8 @@ const EmployeeProfile = () => {
         setEmployee(found);
         setFormData(found);
       }
-      setOrgSettings(getOrgSettings());
+      const settings = await getOrgSettings();
+      setOrgSettings(settings);
       setLoading(false);
     };
     loadData();
@@ -185,7 +186,7 @@ const EmployeeProfile = () => {
                     ...orgSettings.shifts.map(s => ({ label: s.name, value: s.id }))
                   ]}
                 />
-                {formData.shift && (
+                {(formData.shift || isEditing) && (
                   <Input 
                     label="Shift Effective Date" 
                     type="date"
@@ -283,7 +284,7 @@ const EmployeeProfile = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {employee.leavePolicy ? (
-                orgSettings.leavePolicies.find(p => p.name === employee.leavePolicy)?.categories.map(cat => (
+                orgSettings.leavePolicies.find(p => p.name === employee.leavePolicy)?.categories?.map(cat => (
                   <div key={cat.id} className="bg-surfaceHighlight/30 p-4 rounded-xl border border-border flex flex-col items-center justify-center text-center">
                     <span className="text-xs text-textMuted uppercase font-bold mb-1">{cat.name}</span>
                     <span className="text-2xl font-black text-[#1cbdb0]">{cat.maxLeaves}</span>
@@ -298,7 +299,7 @@ const EmployeeProfile = () => {
                    <p className="text-sm">No leave policy assigned to this employee.</p>
                 </div>
               )}
-              {employee.leavePolicy && orgSettings.leavePolicies.find(p => p.name === employee.leavePolicy)?.categories.length === 0 && (
+              {employee.leavePolicy && (orgSettings.leavePolicies.find(p => p.name === employee.leavePolicy)?.categories?.length || 0) === 0 && (
                 <div className="col-span-full py-8 text-center text-textMuted italic">
                   The assigned policy has no leave categories defined.
                 </div>

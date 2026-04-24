@@ -77,6 +77,14 @@ CREATE TABLE IF NOT EXISTS mobile_punches (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 6. Create API Config table
+CREATE TABLE IF NOT EXISTS api_config (
+  company_id TEXT PRIMARY KEY REFERENCES companies(id) ON DELETE CASCADE,
+  base_url TEXT NOT NULL,
+  token TEXT,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Enable RLS (Optional but Recommended)
 -- ALTER TABLE companies ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE org_settings ENABLE ROW LEVEL SECURITY;

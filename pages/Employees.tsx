@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Card, Button, Input, Badge, Select } from '../components/UI';
+import { Card, Button, Input, Badge, Select, Modal } from '../components/UI';
 import { IconSearch, IconUsers, IconCheckCircle, IconX, IconFilter, IconChevronDown, IconChevronUp } from '../components/Icons';
-import { fetchEmployees, getOrgSettings } from '../services/api';
+import { fetchEmployees, getOrgSettings, bulkUpdateEmployees } from '../services/api';
 import { Employee, OrgSettings } from '../types';
 
 const Employees = () => {
@@ -11,6 +11,8 @@ const Employees = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isFilterVisible, setIsFilterVisible] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  
   const [orgSettings, setOrgSettings] = useState<OrgSettings>({
     departments: [],
     designations: [],
@@ -63,6 +65,18 @@ const Employees = () => {
     return matchesGlobalSearch && matchesStatus && matchesDept && matchesGender && matchesDesignation;
   });
 
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedIds(filteredEmployees.map(emp => emp.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectOne = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -71,6 +85,11 @@ const Employees = () => {
            <p className="text-textMuted">View and manage all employee records in one place.</p>
         </div>
         <div className="flex items-center gap-3">
+           {selectedIds.length > 0 && (
+             <Button variant="primary" onClick={() => navigate('/employees/bulk', { state: { ids: selectedIds } })} className="animate-in fade-in slide-in-from-right-4">
+               Manage Employees ({selectedIds.length})
+             </Button>
+           )}
            <button 
              onClick={() => setIsFilterVisible(!isFilterVisible)}
              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all border ${
@@ -185,6 +204,14 @@ const Employees = () => {
           <table className="w-full text-left text-sm text-textMuted">
             <thead className="bg-surfaceHighlight text-xs uppercase font-medium text-text">
               <tr>
+                <th className="px-6 py-4 w-10">
+                  <input 
+                    type="checkbox" 
+                    className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                    checked={selectedIds.length === filteredEmployees.length && filteredEmployees.length > 0}
+                    onChange={handleSelectAll}
+                  />
+                </th>
                 <th className="px-6 py-4">Employee</th>
                 <th className="px-6 py-4">ID</th>
                 <th className="px-6 py-4">Designation</th>
@@ -196,19 +223,27 @@ const Employees = () => {
             <tbody className="divide-y divide-border">
               {loading ? (
                  <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center">
+                    <td colSpan={7} className="px-6 py-8 text-center">
                        <div className="animate-pulse flex justify-center text-primary">Loading data...</div>
                     </td>
                  </tr>
               ) : filteredEmployees.length === 0 ? (
                  <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-textMuted">
+                    <td colSpan={7} className="px-6 py-12 text-center text-textMuted">
                       No employees found matching your criteria.
                     </td>
                  </tr>
               ) : (
                 filteredEmployees.map((emp) => (
-                  <tr key={emp.id} className="hover:bg-surfaceHighlight/50 transition-colors">
+                  <tr key={emp.id} className={`hover:bg-surfaceHighlight/50 transition-colors ${selectedIds.includes(emp.id) ? 'bg-primary/5' : ''}`}>
+                    <td className="px-6 py-4">
+                      <input 
+                        type="checkbox" 
+                        className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                        checked={selectedIds.includes(emp.id)}
+                        onChange={() => handleSelectOne(emp.id)}
+                      />
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                          <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs">

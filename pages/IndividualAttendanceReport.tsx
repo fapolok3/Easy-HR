@@ -236,17 +236,19 @@ const IndividualAttendanceReport = () => {
                                 {new Date(rec.date).toLocaleDateString('en-GB', { weekday: 'short' })}
                               </span>
                             </td>
-                            <td className={`p-3 text-text border-r border-border font-mono text-[13px] ${rec.isLate ? 'bg-red-50 text-red-600 font-bold' : rec.isOffDay && rec.checkIn !== '-' ? 'bg-blue-50 text-blue-600 font-bold' : (!rec.isLate && rec.checkIn !== '-' ? 'bg-emerald-50 text-emerald-700 font-bold' : '')}`}>
+                            <td className={`p-3 text-text border-r border-border font-mono text-[13px] ${rec.isLate ? 'bg-red-50 text-red-600 font-bold' : rec.isHoliday && rec.checkIn !== '-' ? 'bg-amber-50 text-amber-700 font-bold' : rec.isOffDay && rec.checkIn !== '-' ? 'bg-blue-50 text-blue-600 font-bold' : (!rec.isLate && rec.checkIn !== '-' ? 'bg-emerald-50 text-emerald-700 font-bold' : '')}`}>
                               <div className="flex items-center justify-between">
                                  <span>{formatTimeTo12Hour(rec.checkIn)}</span>
                                  {rec.isLate && <span className="text-[10px] font-black text-red-600 bg-white px-1 rounded border border-red-200">(L)</span>}
+                                 {rec.isHoliday && rec.checkIn !== '-' && <span className="text-[10px] font-black text-amber-600 bg-white px-1 rounded border border-amber-200">(H)</span>}
                                  {rec.isOffDay && rec.checkIn !== '-' && <span className="text-[10px] font-black text-blue-600 bg-white px-1 rounded border border-blue-200">(OF)</span>}
                               </div>
                             </td>
-                            <td className={`p-3 text-text border-r border-border font-mono text-[13px] ${rec.isEarlyExit ? 'bg-red-50 text-red-600 font-bold' : rec.isOffDay && rec.checkOut !== '-' && rec.checkOut !== null ? 'bg-blue-50 text-blue-600 font-bold' : (!rec.isEarlyExit && rec.checkOut !== '-' && rec.checkOut !== null ? 'bg-emerald-50 text-emerald-700 font-bold' : '')}`}>
+                            <td className={`p-3 text-text border-r border-border font-mono text-[13px] ${rec.isEarlyExit ? 'bg-red-50 text-red-600 font-bold' : rec.isHoliday && rec.checkOut !== '-' && rec.checkOut !== null ? 'bg-amber-50 text-amber-700 font-bold' : rec.isOffDay && rec.checkOut !== '-' && rec.checkOut !== null ? 'bg-blue-50 text-blue-600 font-bold' : (!rec.isEarlyExit && rec.checkOut !== '-' && rec.checkOut !== null ? 'bg-emerald-50 text-emerald-700 font-bold' : '')}`}>
                               <div className="flex items-center justify-between">
                                  <span>{formatTimeTo12Hour(rec.checkOut)}</span>
                                  {rec.isEarlyExit && <span className="text-[10px] font-black text-red-600 bg-white px-1 rounded border border-red-200">EL</span>}
+                                 {rec.isHoliday && rec.checkOut !== '-' && rec.checkOut !== null && <span className="text-[10px] font-black text-amber-600 bg-white px-1 rounded border border-amber-200">(H)</span>}
                                  {rec.isOffDay && rec.checkOut !== '-' && rec.checkOut !== null && <span className="text-[10px] font-black text-blue-600 bg-white px-1 rounded border border-blue-200">(OF)</span>}
                               </div>
                             </td>
@@ -254,7 +256,9 @@ const IndividualAttendanceReport = () => {
                               <Badge variant={
                                 rec.status === 'Present' || rec.status === 'On Time' ? 'success' :
                                 rec.status === 'Absent' ? 'danger' :
-                                rec.status === 'Late' ? 'warning' : 'default'
+                                rec.status === 'Late' ? 'warning' : 
+                                rec.status === 'Off Day' ? 'default' :
+                                rec.status === 'Holiday' ? 'warning' : 'default'
                               }>
                                 {rec.status === 'Leave' ? 'LEAVE' : rec.status}
                               </Badge>
