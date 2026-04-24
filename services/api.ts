@@ -66,11 +66,18 @@ export const getCurrentSession = (): AuthSession | null => {
   return stored ? JSON.parse(stored) : null;
 };
 
+export const clearSessionData = () => {
+  localStorage.removeItem(LS_AUTH_SESSION);
+  localStorage.removeItem(LS_API_CONFIG);
+};
+
 export const setCurrentSession = (session: AuthSession | null) => {
+  // Always clear previous data before setting new session to avoid contamination
+  localStorage.removeItem(LS_AUTH_SESSION);
+  localStorage.removeItem(LS_API_CONFIG);
+  
   if (session) {
     localStorage.setItem(LS_AUTH_SESSION, JSON.stringify(session));
-  } else {
-    localStorage.removeItem(LS_AUTH_SESSION);
   }
 };
 
@@ -157,7 +164,18 @@ export const createCompany = async (company: Omit<Company, 'id' | 'createdAt'>):
 
   const newCompany = inserts[0];
   
-  // 2. Create default org settings for new company
+  // 2. Create default api config for new company
+  try {
+    await supabase.from('api_config').insert({
+      company_id: newCompany.id,
+      base_url: DEFAULT_BASE_URL,
+      token: ''
+    });
+  } catch (e) {
+    console.error('Exception creating default api config:', e);
+  }
+  
+  // 3. Create default org settings for new company
   try {
     const { error: settingsError } = await supabase.from('org_settings').insert({
       company_id: newCompany.id,
@@ -252,21 +270,31 @@ export const getApiConfig = async (): Promise<ApiConfig> => {
     if (!checkSupabase()) return { baseUrl: DEFAULT_BASE_URL, token: '' };
     const session = getCurrentSession();
     const companyId = session?.companyId;
+    
+    // If no company session, we might be a super admin or not logged in yet
     if (!companyId) {
       const stored = localStorage.getItem(LS_API_CONFIG);
       return stored ? JSON.parse(stored) : { baseUrl: DEFAULT_BASE_URL, token: '' };
     }
 
+    // Always fetch latest from Supabase for the current company
     const { data, error } = await supabase.from('api_config').select('*').eq('company_id', companyId).maybeSingle();
+    
     if (error || !data) {
-      const stored = localStorage.getItem(LS_API_CONFIG);
-      return stored ? JSON.parse(stored) : { baseUrl: DEFAULT_BASE_URL, token: '' };
+      // If no config found in DB, return defaults but DON'T fallback to a potentially stale LS config
+      return { baseUrl: DEFAULT_BASE_URL, token: '' };
     }
 
-    return {
+    const config = {
       baseUrl: data.base_url,
-      token: data.token || ''
+      token: data.token || '',
+      secretKey: data.secret_key || ''
     };
+    
+    // Update cache for the CURRENT company
+    localStorage.setItem(LS_API_CONFIG, JSON.stringify(config));
+    
+    return config;
   } catch (err) {
     console.error(err);
     return { baseUrl: DEFAULT_BASE_URL, token: '' };
@@ -282,13 +310,22 @@ export const saveApiConfig = async (config: ApiConfig) => {
     const companyId = session?.companyId;
     if (!companyId) return;
 
-    const { error } = await supabase.from('api_config').upsert({
+    const { data, error } = await supabase.from('api_config').upsert({
       company_id: companyId,
       base_url: config.baseUrl,
-      token: config.token
-    }, { onConflict: 'company_id' });
+      token: config.token,
+      secret_key: config.secretKey
+    }, { onConflict: 'company_id' }).select();
 
-    if (error) console.error('Error saving api config to supabase:', error);
+    if (error) {
+      console.error('Error saving api config to supabase:', error);
+      // Fallback or re-throw? For now just log more info
+      if (error.code === '42501') {
+        console.error('RLS Policy violation on api_config table');
+      }
+    } else {
+      console.log('Successfully saved api_config to Supabase:', data);
+    }
   } catch (err) {
     console.error(err);
   }

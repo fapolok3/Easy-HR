@@ -162,6 +162,13 @@ const Settings = () => {
                   Reset
                 </Button>
               </div>
+              <Input
+                label="Secret Key (Optional)"
+                type="password"
+                placeholder="••••••••"
+                value={apiConfig.secretKey}
+                onChange={(e) => setApiConfig({ ...apiConfig, secretKey: e.target.value })}
+              />
             </div>
 
             <div className="bg-surfaceHighlight p-4 rounded-lg border border-border text-sm">

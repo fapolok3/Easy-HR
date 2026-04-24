@@ -82,11 +82,12 @@ CREATE TABLE IF NOT EXISTS api_config (
   company_id TEXT PRIMARY KEY REFERENCES companies(id) ON DELETE CASCADE,
   base_url TEXT NOT NULL,
   token TEXT,
+  secret_key TEXT,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- 7. Security: Enable Row Level Security (RLS)
--- Run these one by one in your Supabase SQL Editor
+-- If you want to enable security, run these one by one:
 -- ALTER TABLE companies ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE org_settings ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE employees ENABLE ROW LEVEL SECURITY;
@@ -94,5 +95,11 @@ CREATE TABLE IF NOT EXISTS api_config (
 -- ALTER TABLE mobile_punches ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE api_config ENABLE ROW LEVEL SECURITY;
 
--- Note: To fully implement data isolation, you should use Supabase Auth.
--- Currently, data is separated using the `company_id` column in all queries.
+-- IMPORTANT: If you enable RLS, you MUST add policies to allow access. 
+-- Since this app doesn't use Supabase Auth yet, you can add "permissive" policies for testing:
+-- CREATE POLICY "public_access" ON companies FOR ALL USING (true);
+-- CREATE POLICY "public_access" ON api_config FOR ALL USING (true);
+-- CREATE POLICY "public_access" ON org_settings FOR ALL USING (true);
+-- CREATE POLICY "public_access" ON employees FOR ALL USING (true);
+-- CREATE POLICY "public_access" ON leave_requests FOR ALL USING (true);
+-- CREATE POLICY "public_access" ON mobile_punches FOR ALL USING (true);
