@@ -413,9 +413,15 @@ export const getLocalEmployees = async (): Promise<Employee[]> => {
     if (!checkSupabase()) return [];
     const session = getCurrentSession();
     const companyId = session?.companyId;
-    if (!companyId) return [];
+    
+    let query = supabase.from('employees').select('*');
+    if (companyId) {
+      query = query.eq('company_id', companyId);
+    } else if (!session?.isSuperAdmin) {
+      return [];
+    }
 
-    const { data, error } = await supabase.from('employees').select('*').eq('company_id', companyId);
+    const { data, error } = await query;
     if (error) {
       console.error('Error fetching employees:', error);
       return [];
@@ -586,18 +592,27 @@ export const getMobilePunches = async (): Promise<MobilePunch[]> => {
     if (!checkSupabase()) return [];
     const session = getCurrentSession();
     const companyId = session?.companyId;
-    if (!companyId) return [];
+    
+    let query = supabase.from('mobile_punches').select('*');
+    if (companyId) {
+      query = query.eq('company_id', companyId);
+    } else if (!session?.isSuperAdmin) {
+      return [];
+    }
 
-    const { data, error } = await supabase.from('mobile_punches').select('*').eq('company_id', companyId);
+    const { data, error } = await query;
     if (error) {
       console.error('Error fetching mobile punches:', error);
       return [];
     }
 
+    console.log(`getMobilePunches: Retrieved ${data?.length || 0} records from Supabase`);
+
     return (data || []).map((item: any) => {
       if (!item) return null;
       return {
         id: item.id,
+        companyId: item.company_id,
         employeeId: item.employee_id,
         employeeName: item.employee_name,
         type: item.type,
@@ -617,27 +632,53 @@ export const saveMobilePunch = async (punch: Omit<MobilePunch, 'id'>): Promise<M
   try {
     if (!checkSupabase()) return null;
     const session = getCurrentSession();
-    const companyId = session?.companyId;
-    if (!companyId) return null;
+    let companyId = punch.companyId || session?.companyId;
+    
+    // If companyId is still missing, try to fetch it from the employee's record
+    if (!companyId && punch.employeeId) {
+      console.log('saveMobilePunch: companyId missing, attempting to resolve from employeeId:', punch.employeeId);
+      const { data: empData } = await supabase
+        .from('employees')
+        .select('company_id')
+        .eq('id', punch.employeeId)
+        .maybeSingle();
+      
+      if (empData?.company_id) {
+        companyId = empData.company_id;
+        console.log('saveMobilePunch: Resolved companyId from employee record:', companyId);
+      }
+    }
 
-    const { data, error } = await supabase.from('mobile_punches').insert({
+    if (!companyId) {
+      console.warn('saveMobilePunch: No companyId available after resolution attempts', { punch, session });
+      return null;
+    }
+
+    const { data: insertedData, error } = await supabase.from('mobile_punches').insert({
       company_id: companyId,
-      employee_id: punch.employeeId,
-      employee_name: punch.employeeName,
+      employee_id: String(punch.employeeId),
+      employee_name: punch.employeeName || 'Unknown',
       type: punch.type,
       timestamp: punch.timestamp,
       latitude: punch.latitude,
       longitude: punch.longitude,
-      address: punch.address
-    }).select().single();
+      address: punch.address || 'Unknown Location'
+    }).select();
 
     if (error) {
-       console.error('Error saving mobile punch:', error);
+       console.error('Error saving mobile punch to Supabase:', error);
        return null;
     }
 
+    if (!insertedData || insertedData.length === 0) {
+       console.error('No data returned after saving mobile punch');
+       return null;
+    }
+
+    const data = insertedData[0];
     return {
       id: data.id,
+      companyId: data.company_id,
       employeeId: data.employee_id,
       employeeName: data.employee_name,
       type: data.type,
@@ -647,7 +688,7 @@ export const saveMobilePunch = async (punch: Omit<MobilePunch, 'id'>): Promise<M
       address: data.address
     };
   } catch (err) {
-    console.error(err);
+    console.error('Critical exception in saveMobilePunch:', err);
     return null;
   }
 };
@@ -698,6 +739,9 @@ export const fetchEmployees = async (): Promise<Employee[]> => {
 
     const apiEmployees: Map<number, Employee> = new Map();
 
+    const session = getCurrentSession();
+    const companyId = session?.companyId;
+
     if (response && response.attendances && Array.isArray(response.attendances.data)) {
        response.attendances.data.forEach(person => {
           if (!apiEmployees.has(person.person_id)) {
@@ -710,7 +754,8 @@ export const fetchEmployees = async (): Promise<Employee[]> => {
                 joinDate: '-',
                 email: '-',
                 phone: '-',
-                gender: 'Not Set'
+                gender: 'Not Set',
+                companyId: companyId
              });
           }
        });
@@ -832,53 +877,20 @@ export const fetchAttendance = async (startDate?: string, endDate?: string): Pro
     const allEmployees = await fetchEmployees();
     const dates = getDatesInRange(start, end);
 
-    const records: AttendanceRecord[] = [];
-
-    // If no token, return all employees as absent for each date
-    if (!config.token) {
-      dates.forEach(date => {
-        allEmployees.forEach(emp => {
-          records.push({
-            id: `${emp.id}-${date}`,
-            employeeName: emp.name,
-            employeeId: emp.id,
-            date: date,
-            checkIn: '-',
-            checkOut: '-',
-            status: 'Absent',
-            location: '-',
-            hours: '-'
-          });
-        });
-      });
-      return records;
-    }
-
-    // Call API for logs
-    const endpoint = `/attendance_logs?start=${start}&end=${end}`;
-    const response: AttendanceApiResponse = await apiFetch(endpoint);
-
-    // Group API logs by employee and date
-    const apiLogsMap = new Map<string, any>();
-    if (response && response.attendances && Array.isArray(response.attendances.data)) {
-      response.attendances.data.forEach(person => {
-        if (person.logs) {
-          const empId = person.person_identifier || String(person.person_id);
-          Object.keys(person.logs).forEach(dateKey => {
-            apiLogsMap.set(`${empId}-${dateKey}`, person.logs[dateKey]);
-          });
-        }
-      });
-    }
-
     // Group Mobile Punches by employee and date
     const mobilePunches = await getMobilePunches();
     const mobilePunchesMap = new Map<string, { in?: string, out?: string }>();
     mobilePunches.forEach(p => {
-      const dateKey = p.timestamp.split('T')[0];
-      const key = `${p.employeeId}-${dateKey}`;
+      // Convert UTC timestamp to local date for Bangladesh/Local reporting
+      const timestamp = new Date(p.timestamp);
+      const y = timestamp.getFullYear();
+      const m = String(timestamp.getMonth() + 1).padStart(2, '0');
+      const d = String(timestamp.getDate()).padStart(2, '0');
+      const dateKey = `${y}-${m}-${d}`;
+      
+      const key = `${String(p.employeeId)}-${dateKey}`;
       const existing = mobilePunchesMap.get(key) || {};
-      const timeStr = p.timestamp.split('T')[1].substring(0, 5); // HH:MM
+      const timeStr = String(timestamp.getHours()).padStart(2, '0') + ':' + String(timestamp.getMinutes()).padStart(2, '0');
       
       if (p.type === 'Punch In') {
         if (!existing.in || timeStr < existing.in) existing.in = timeStr;
@@ -888,9 +900,38 @@ export const fetchAttendance = async (startDate?: string, endDate?: string): Pro
       mobilePunchesMap.set(key, existing);
     });
 
+    if (mobilePunches.length > 0) {
+      console.log(`fetchAttendance: Found ${mobilePunches.length} total mobile punches. Map size: ${mobilePunchesMap.size}`);
+    }
+
     const holidays = orgSettings.holidays || [];
     const allLeaveRequests = await getLeaveRequests();
     const leaveRequests = allLeaveRequests.filter(r => r.status === 'Approved');
+
+    // Group API logs by employee and date
+    const apiLogsMap = new Map<string, any>();
+
+    // Call API for logs ONLY if token exists
+    if (config.token) {
+      try {
+        const endpoint = `/attendance_logs?start=${start}&end=${end}`;
+        const response: AttendanceApiResponse = await apiFetch(endpoint);
+        if (response && response.attendances && Array.isArray(response.attendances.data)) {
+          response.attendances.data.forEach(person => {
+            if (person.logs) {
+              const empId = person.person_identifier || String(person.person_id);
+              Object.keys(person.logs).forEach(dateKey => {
+                apiLogsMap.set(`${empId}-${dateKey}`, person.logs[dateKey]);
+              });
+            }
+          });
+        }
+      } catch (err) {
+        console.error('fetchAttendance API error (swallowed):', err);
+      }
+    }
+
+    const records: AttendanceRecord[] = [];
 
     // Helper for formatting
     const formatTime = (dateTimeStr: string) => {
@@ -904,17 +945,29 @@ export const fetchAttendance = async (startDate?: string, endDate?: string): Pro
       const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
 
       allEmployees.forEach(emp => {
-        let log = apiLogsMap.get(`${emp.id}-${date}`);
-        const mobileLog = mobilePunchesMap.get(`${emp.id}-${date}`);
+        const empIdStr = String(emp.id);
+        let log = apiLogsMap.get(`${empIdStr}-${date}`);
+        const mobileLog = mobilePunchesMap.get(`${empIdStr}-${date}`);
+        let source = log ? 'Device Sync' : '-';
         
         // If no API log but has mobile punch, create a virtual log
         if (!log && mobileLog && (mobileLog.in || mobileLog.out)) {
+          let calcHours = '0.00';
+          if (mobileLog.in && mobileLog.out) {
+            const inMins = parseTimeValue(mobileLog.in);
+            const outMins = parseTimeValue(mobileLog.out);
+            if (inMins !== null && outMins !== null) {
+              calcHours = ((outMins - inMins) / 60).toFixed(2);
+            }
+          }
+          
           log = {
             start: mobileLog.in ? `${date} ${mobileLog.in}:00` : '',
             end: mobileLog.out ? `${date} ${mobileLog.out}:00` : '',
-            hours: '0.00', // Basic placeholder
+            hours: calcHours,
             location: 'Mobile'
           };
+          source = 'Mobile';
         }
 
         const shift = getEffectiveShift(emp, date, shifts);
@@ -939,17 +992,17 @@ export const fetchAttendance = async (startDate?: string, endDate?: string): Pro
         if (isGlobalHoliday) {
           status = 'Holiday';
           expectedHours = '0.00';
-          if (log && log.start) {
+          if (log && (log.start || log.end)) {
             // Worked on holiday
             status = 'Present'; 
           }
         } else if (approvedLeave) {
           status = 'Leave';
-          expectedHours = '0.00'; // Or keep as 0? Usually leave doesn't expect hours
+          expectedHours = '0.00'; 
         } else if (isOffDay) {
           status = 'Off Day';
           expectedHours = '0.00';
-          if (log && log.start) {
+          if (log && (log.start || log.end)) {
             // Worked on off day
             status = 'Present';
           }
@@ -965,7 +1018,7 @@ export const fetchAttendance = async (startDate?: string, endDate?: string): Pro
             expectedHours = '8.00';
           }
 
-          if (log && log.start) {
+          if (log && (log.start || log.end)) {
             status = 'Present';
 
             if (shift) {
@@ -1005,7 +1058,7 @@ export const fetchAttendance = async (startDate?: string, endDate?: string): Pro
           isEarlyExit,
           isOffDay: !!isOffDay,
           isHoliday: !!isGlobalHoliday,
-          location: log ? 'Device Sync' : '-',
+          location: source,
           hours,
           expectedHours
         });

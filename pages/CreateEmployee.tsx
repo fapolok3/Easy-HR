@@ -31,6 +31,7 @@ const CreateEmployee = () => {
     shift: '',
     shiftEffectiveDate: new Date().toISOString().split('T')[0],
     leavePolicy: '',
+    workplace: '',
     joinDate: new Date().toISOString().split('T')[0]
   });
 
@@ -71,6 +72,7 @@ const CreateEmployee = () => {
       shift: formData.shift,
       shiftEffectiveDate: formData.shiftEffectiveDate,
       leavePolicy: formData.leavePolicy,
+      workplace: formData.workplace,
       password: formData.password
     };
 
@@ -228,6 +230,17 @@ const CreateEmployee = () => {
               { label: 'Please Select', value: '' },
               ...orgSettings.leavePolicies.map(p => ({ label: p.name, value: p.name }))
             ]}
+          />
+
+          <Select 
+            label="Workplace / Office"
+            value={formData.workplace}
+            onChange={e => setFormData({...formData, workplace: e.target.value})}
+            options={[
+              { label: 'Please Select', value: '' },
+              ...orgSettings.workplaces.map(w => ({ label: w, value: w }))
+            ]}
+            required
           />
 
           <div className="pt-6">

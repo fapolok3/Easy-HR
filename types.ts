@@ -189,6 +189,7 @@ export interface OrgSettings {
 
 export interface MobilePunch {
   id: string;
+  companyId?: string;
   employeeId: string;
   employeeName: string;
   type: 'Punch In' | 'Punch Out';

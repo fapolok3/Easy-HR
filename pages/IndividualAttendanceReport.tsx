@@ -205,8 +205,19 @@ const IndividualAttendanceReport = () => {
 
           {selectedEmployee ? (
             <>
-              {/* Summary Section */}
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
+                {selectedEmployee && (
+                  <div className="flex items-center gap-4 p-4 bg-primary/5 rounded-xl border border-primary/20 mb-6">
+                    <div className="w-12 h-12 rounded-full bg-white border border-border flex items-center justify-center overflow-hidden">
+                       {selectedEmployee.avatar ? <img src={selectedEmployee.avatar} alt="" className="w-full h-full object-cover" /> : <IconUser className="w-6 h-6 text-textMuted" />}
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold text-text uppercase">{selectedEmployee.name}</h2>
+                      <p className="text-sm text-textMuted font-medium uppercase">{selectedEmployee.designation} • {selectedEmployee.department} • {selectedEmployee.workplace || 'No Workplace'}</p>
+                    </div>
+                  </div>
+                )}
+                {/* Summary Section */}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
                 <SummaryCard label="Present" value={summary.present} icon={<IconCheckCircle className="text-success" />} color="text-success" />
                 <SummaryCard label="Absent" value={summary.absent} icon={<IconXCircle className="text-danger" />} color="text-danger" />
                 <SummaryCard label="Late" value={summary.late} icon={<IconClock className="text-warning" />} color="text-warning" />
@@ -226,14 +237,15 @@ const IndividualAttendanceReport = () => {
                         <th className="p-3 font-bold border-r border-[#15a398]">In Time</th>
                         <th className="p-3 font-bold border-r border-[#15a398]">Out Time</th>
                         <th className="p-3 font-bold border-r border-[#15a398]">Status</th>
-                        <th className="p-3 font-bold text-center">Working Hours</th>
+                        <th className="p-3 font-bold border-r border-[#15a398] text-center">Working Hours</th>
+                        <th className="p-3 font-bold text-center">Source</th>
                       </tr>
                     </thead>
                     <tbody>
                       {loading ? (
-                        <tr><td colSpan={5} className="p-8 text-center text-textMuted italic">Calculating records...</td></tr>
+                        <tr><td colSpan={6} className="p-8 text-center text-textMuted italic">Calculating records...</td></tr>
                       ) : records.length === 0 ? (
-                        <tr><td colSpan={5} className="p-8 text-center text-textMuted">No records found for this month.</td></tr>
+                        <tr><td colSpan={6} className="p-8 text-center text-textMuted">No records found for this month.</td></tr>
                       ) : (
                         records.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map(rec => (
                           <tr key={rec.id} className="border-b border-border hover:bg-surfaceHighlight transition-colors">
@@ -270,8 +282,11 @@ const IndividualAttendanceReport = () => {
                                 {rec.status === 'Leave' ? 'LEAVE' : rec.status}
                               </Badge>
                             </td>
-                            <td className="p-3 text-center font-bold text-[#1cbdb0]">
+                            <td className="p-3 text-center font-bold text-[#1cbdb0] border-r border-border">
                               {rec.hours !== '-' ? rec.hours : '-'}
+                            </td>
+                            <td className="p-3 text-center text-[10px] font-bold text-textMuted uppercase whitespace-nowrap">
+                              {rec.location}
                             </td>
                           </tr>
                         ))

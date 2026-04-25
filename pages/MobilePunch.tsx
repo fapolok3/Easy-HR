@@ -50,10 +50,21 @@ const MobilePunch = () => {
     const loadPunches = async () => {
       if (selectedEmployeeId) {
         const allPunches = await getMobilePunches();
-        const punches = allPunches.filter(p => 
-          p.employeeId === selectedEmployeeId && 
-          p.timestamp.split('T')[0] === new Date().toISOString().split('T')[0]
-        );
+        // Get today's local date in YYYY-MM-DD format
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        
+        const punches = allPunches.filter(p => {
+          if (p.employeeId !== selectedEmployeeId) return false;
+          
+          // Use local date conversion to match local today
+          const pDate = new Date(p.timestamp);
+          const pDateStr = `${pDate.getFullYear()}-${String(pDate.getMonth() + 1).padStart(2, '0')}-${String(pDate.getDate()).padStart(2, '0')}`;
+          return pDateStr === todayStr;
+        });
+
+        // Sort by timestamp just in case
+        punches.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
         setTodayPunches(punches);
       }
     };
@@ -61,23 +72,45 @@ const MobilePunch = () => {
   }, [selectedEmployeeId]);
 
   const handlePunch = async () => {
-    if (!selectedEmployeeId || !location) return;
+    if (!selectedEmployeeId || !location) {
+      console.warn('handlePunch called but missing selection or location:', { selectedEmployeeId, location });
+      return;
+    }
 
     const emp = employees.find(e => e.id === selectedEmployeeId);
-    const type = todayPunches.length % 2 === 0 ? 'Punch In' : 'Punch Out';
+    // Modified logic: First punch of the day is "Punch In", everything else is "Punch Out"
+    const type = todayPunches.length === 0 ? 'Punch In' : 'Punch Out';
     
-    const newPunch = await saveMobilePunch({
+    console.log('Attempting to save punch:', {
       employeeId: selectedEmployeeId,
-      employeeName: emp?.name || 'Unknown',
-      type: type as any,
-      timestamp: new Date().toISOString(),
-      latitude: location.lat,
-      longitude: location.lng,
-      address: location.address
+      employeeName: emp?.name,
+      companyId: emp?.companyId || session?.companyId,
+      type,
+      location: location.address
     });
 
-    if (newPunch) {
-      setTodayPunches([...todayPunches, newPunch]);
+    try {
+      const newPunch = await saveMobilePunch({
+        employeeId: selectedEmployeeId,
+        employeeName: emp?.name || 'Unknown',
+        companyId: emp?.companyId || session?.companyId,
+        type: type as any,
+        timestamp: new Date().toISOString(),
+        latitude: location.lat,
+        longitude: location.lng,
+        address: location.address
+      });
+
+      if (newPunch) {
+        setTodayPunches([...todayPunches, newPunch]);
+        alert(`Success! ${type} recorded successfully.`);
+      } else {
+        console.error('saveMobilePunch returned null. Check company ID or Supabase connection.');
+        alert('Failed to save record. Please ensure you are logged in correctly.');
+      }
+    } catch (err) {
+      console.error('Exception in handlePunch:', err);
+      alert('An unexpected error occurred while saving.');
     }
     setPunchProgress(0);
     setPunching(false);
@@ -88,6 +121,10 @@ const MobilePunch = () => {
   const startPunching = () => {
     if (!selectedEmployeeId) {
        alert('Please select an employee first');
+       return;
+    }
+    if (!location) {
+       alert('Location not detected. Please enable GPS and wait a moment.');
        return;
     }
     setPunching(true);
@@ -153,17 +190,17 @@ const MobilePunch = () => {
           <div className="grid grid-cols-2 gap-4 mt-6 border-t border-border pt-4">
             <div className="text-center">
               <p className="text-[10px] text-textMuted uppercase font-bold mb-1">Punch In</p>
-              <p className={`text-sm font-bold ${todayPunches.find(p => p && p.type === 'Punch In') ? 'text-emerald-500' : 'text-slate-300'}`}>
-                {todayPunches.find(p => p && p.type === 'Punch In') 
-                  ? new Date(todayPunches.find(p => p && p.type === 'Punch In').timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+              <p className={`text-sm font-bold ${todayPunches.length > 0 ? 'text-emerald-500' : 'text-slate-300'}`}>
+                {todayPunches.length > 0
+                  ? new Date(todayPunches[0].timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
                   : 'No Data'}
               </p>
             </div>
             <div className="text-center">
               <p className="text-[10px] text-textMuted uppercase font-bold mb-1">Punch Out</p>
-              <p className={`text-sm font-bold ${todayPunches.find(p => p && p.type === 'Punch Out') ? 'text-red-500' : 'text-slate-300'}`}>
-                {todayPunches.find(p => p && p.type === 'Punch Out') 
-                  ? new Date(todayPunches.find(p => p && p.type === 'Punch Out').timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+              <p className={`text-sm font-bold ${todayPunches.length > 1 ? 'text-red-500' : 'text-slate-300'}`}>
+                {todayPunches.length > 1
+                  ? new Date(todayPunches[todayPunches.length - 1].timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
                   : 'No Data'}
               </p>
             </div>
@@ -176,22 +213,26 @@ const MobilePunch = () => {
 
         {/* Map View */}
         <Card className="overflow-hidden p-0 h-[300px] relative border-border">
-          <div className="absolute inset-0 bg-slate-200 animate-pulse flex items-center justify-center">
-             <div className="text-center z-10 px-4">
-                <IconSearch className="w-8 h-8 text-primary mx-auto mb-2" />
-                <p className="text-sm font-bold text-text">Locating...</p>
-                <p className="text-xs text-textMuted">{location?.lat?.toFixed(4)}, {location?.lng?.toFixed(4)}</p>
-             </div>
-          </div>
-          {/* Simulated Map Background */}
-          <div 
-            className="absolute inset-0 bg-cover bg-center grayscale opacity-50"
-            style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?auto=format&fit=crop&q=80&w=1000")' }}
-          />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-             <div className="w-4 h-4 bg-primary rounded-full border-2 border-white shadow-lg animate-ping" />
-             <div className="w-4 h-4 bg-primary rounded-full border-2 border-white shadow-lg absolute inset-0" />
-          </div>
+          {!location ? (
+            <div className="absolute inset-0 bg-slate-200 animate-pulse flex items-center justify-center">
+               <div className="text-center z-10 px-4">
+                  <IconSearch className="w-8 h-8 text-primary mx-auto mb-2" />
+                  <p className="text-sm font-bold text-text">Locating...</p>
+               </div>
+            </div>
+          ) : (
+            <iframe
+              width="100%"
+              height="100%"
+              style={{ border: 0 }}
+              loading="lazy"
+              allowFullScreen
+              referrerPolicy="no-referrer-when-downgrade"
+              src={`https://maps.google.com/maps?q=${location.lat},${location.lng}&z=16&output=embed`}
+            ></iframe>
+          )}
+          
+          {/* Legend removed since we don't need key check anymore */}
         </Card>
 
         {/* Punch Button Section */}
