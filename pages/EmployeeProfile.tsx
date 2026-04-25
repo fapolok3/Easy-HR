@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Button, Input, Select, Badge, Modal } from '../components/UI';
 import { IconArrowLeft, IconTrash, IconCheckCircle, IconEdit, IconSave } from '../components/Icons';
-import { fetchEmployees, saveLocalEmployee, deleteLocalEmployee, getOrgSettings } from '../services/api';
+import { fetchEmployees, saveLocalEmployee, deleteLocalEmployee, getOrgSettings, getCurrentSession } from '../services/api';
 import { OrgSettings, Employee } from '../types';
 
 const EmployeeProfile = () => {
@@ -104,9 +104,11 @@ const EmployeeProfile = () => {
               <IconSave className="w-4 h-4" /> Save Changes
             </Button>
           ) : (
-            <Button onClick={() => setIsEditing(true)} variant="secondary" className="gap-2">
-              <IconEdit className="w-4 h-4" /> Edit Information
-            </Button>
+            !getCurrentSession()?.isEmployee && (
+              <Button onClick={() => setIsEditing(true)} variant="secondary" className="gap-2">
+                <IconEdit className="w-4 h-4" /> Edit Information
+              </Button>
+            )
           )}
         </div>
       </div>
@@ -309,77 +311,79 @@ const EmployeeProfile = () => {
         </div>
 
         {/* Sidebar Actions */}
-        <div className="space-y-6">
-          <Card className="p-6">
-            <h3 className="text-lg font-bold text-text mb-6">Actions</h3>
-            <div className="space-y-3">
-              <Button 
-                variant="secondary" 
-                className="w-full justify-start gap-3"
-                onClick={toggleAdmin}
-              >
-                <Badge variant={employee.isAdmin ? 'warning' : 'default'} className="!p-1.5"><IconCheckCircle className="w-4 h-4" /></Badge>
-                {employee.isAdmin ? 'Revoke Admin' : 'Set as Admin'}
-              </Button>
-              <Button 
-                variant="secondary" 
-                className="w-full justify-start gap-3"
-                onClick={toggleLineManager}
-              >
-                <Badge variant={employee.isLineManager ? 'success' : 'default'} className="!p-1.5"><IconCheckCircle className="w-4 h-4" /></Badge>
-                {employee.isLineManager ? 'Revoke Manager' : 'Set as Line Manager'}
-              </Button>
-              <div className="pt-4 border-t border-border mt-4 space-y-3">
+        {!getCurrentSession()?.isEmployee && (
+          <div className="space-y-6">
+            <Card className="p-6">
+              <h3 className="text-lg font-bold text-text mb-6">Actions</h3>
+              <div className="space-y-3">
                 <Button 
-                  variant="ghost" 
-                  className={`w-full justify-start hover:bg-amber-500/10 hover:text-amber-500 ${employee.status === 'Inactive' ? 'text-amber-500 bg-amber-500/10' : ''}`}
-                  onClick={() => updateStatus('Inactive')}
+                  variant="secondary" 
+                  className="w-full justify-start gap-3"
+                  onClick={toggleAdmin}
                 >
-                  Mark as Inactive
+                  <Badge variant={employee.isAdmin ? 'warning' : 'default'} className="!p-1.5"><IconCheckCircle className="w-4 h-4" /></Badge>
+                  {employee.isAdmin ? 'Revoke Admin' : 'Set as Admin'}
                 </Button>
                 <Button 
-                  variant="ghost" 
-                  className={`w-full justify-start hover:bg-orange-500/10 hover:text-orange-500 ${employee.status === 'Resigned' ? 'text-orange-500 bg-orange-500/10' : ''}`}
-                  onClick={() => updateStatus('Resigned')}
+                  variant="secondary" 
+                  className="w-full justify-start gap-3"
+                  onClick={toggleLineManager}
                 >
-                  Resign Employee
+                  <Badge variant={employee.isLineManager ? 'success' : 'default'} className="!p-1.5"><IconCheckCircle className="w-4 h-4" /></Badge>
+                  {employee.isLineManager ? 'Revoke Manager' : 'Set as Line Manager'}
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  className={`w-full justify-start hover:bg-red-500/10 hover:text-red-500 ${employee.status === 'Terminated' ? 'text-red-500 bg-red-500/10' : ''}`}
-                  onClick={() => updateStatus('Terminated')}
-                >
-                  Terminate
-                </Button>
-                {employee.status !== 'Active' && (
+                <div className="pt-4 border-t border-border mt-4 space-y-3">
                   <Button 
                     variant="ghost" 
-                    className="w-full justify-start text-emerald-500 hover:bg-emerald-500/10"
-                    onClick={() => updateStatus('Active')}
+                    className={`w-full justify-start hover:bg-amber-500/10 hover:text-amber-500 ${employee.status === 'Inactive' ? 'text-amber-500 bg-amber-500/10' : ''}`}
+                    onClick={() => updateStatus('Inactive')}
                   >
-                    Activate Employee
+                    Mark as Inactive
                   </Button>
-                )}
+                  <Button 
+                    variant="ghost" 
+                    className={`w-full justify-start hover:bg-orange-500/10 hover:text-orange-500 ${employee.status === 'Resigned' ? 'text-orange-500 bg-orange-500/10' : ''}`}
+                    onClick={() => updateStatus('Resigned')}
+                  >
+                    Resign Employee
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    className={`w-full justify-start hover:bg-red-500/10 hover:text-red-500 ${employee.status === 'Terminated' ? 'text-red-500 bg-red-500/10' : ''}`}
+                    onClick={() => updateStatus('Terminated')}
+                  >
+                    Terminate
+                  </Button>
+                  {employee.status !== 'Active' && (
+                    <Button 
+                      variant="ghost" 
+                      className="w-full justify-start text-emerald-500 hover:bg-emerald-500/10"
+                      onClick={() => updateStatus('Active')}
+                    >
+                      Activate Employee
+                    </Button>
+                  )}
+                </div>
+                <div className="pt-4 border-t border-border mt-4">
+                  <Button 
+                    variant="danger" 
+                    className="w-full gap-2"
+                    onClick={() => setShowDeleteConfirm(true)}
+                  >
+                    <IconTrash className="w-4 h-4" /> Delete Employee
+                  </Button>
+                </div>
               </div>
-              <div className="pt-4 border-t border-border mt-4">
-                <Button 
-                  variant="danger" 
-                  className="w-full gap-2"
-                  onClick={() => setShowDeleteConfirm(true)}
-                >
-                  <IconTrash className="w-4 h-4" /> Delete Employee
-                </Button>
-              </div>
-            </div>
-          </Card>
+            </Card>
 
-          <Card className="p-6 bg-surfaceHighlight/30 border-dashed">
-            <h4 className="text-sm font-medium text-textMuted mb-2">Notice</h4>
-            <p className="text-xs text-textMuted leading-relaxed">
-              Changing an employee status might affect their attendance records and payroll eligibility for the current period.
-            </p>
-          </Card>
-        </div>
+            <Card className="p-6 bg-surfaceHighlight/30 border-dashed">
+              <h4 className="text-sm font-medium text-textMuted mb-2">Notice</h4>
+              <p className="text-xs text-textMuted leading-relaxed">
+                Changing an employee status might affect their attendance records and payroll eligibility for the current period.
+              </p>
+            </Card>
+          </div>
+        )}
       </div>
 
       {/* Delete Confirmation */}

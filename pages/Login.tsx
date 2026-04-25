@@ -47,6 +47,23 @@ const Login = () => {
         return;
       }
 
+      // Check Employee Logins
+      const { getEmployeeByCredentials } = await import('../services/api');
+      const employee = await getEmployeeByCredentials(email, password);
+      
+      if (employee) {
+        const session: AuthSession = {
+          userEmail: employee.email || employee.phone,
+          isSuperAdmin: false,
+          isEmployee: true,
+          employeeId: employee.id,
+          companyId: employee.companyId
+        };
+        login(session);
+        navigate('/attendance/mobile-punch');
+        return;
+      }
+
       setError('Invalid email or password');
     } catch (err) {
       console.error(err);

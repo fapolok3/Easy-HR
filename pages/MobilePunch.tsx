@@ -19,8 +19,10 @@ const MobilePunch = () => {
       const emps = await fetchEmployees();
       setEmployees(emps);
       
-      // If session is an employee (based on email usually, but here we just check if it's admin)
-      // For demo, we'll let user select an employee if admin, otherwise auto-select if we had employee login
+      const session = getCurrentSession();
+      if (session?.isEmployee && session.employeeId) {
+        setSelectedEmployeeId(session.employeeId);
+      }
     };
     loadData();
     
@@ -74,7 +76,9 @@ const MobilePunch = () => {
       address: location.address
     });
 
-    setTodayPunches([...todayPunches, newPunch]);
+    if (newPunch) {
+      setTodayPunches([...todayPunches, newPunch]);
+    }
     setPunchProgress(0);
     setPunching(false);
   };
@@ -116,19 +120,21 @@ const MobilePunch = () => {
 
       <div className="p-4 md:p-8 max-w-md mx-auto w-full space-y-6">
         {/* Employee Selection */}
-        <Card className="p-4">
-          <label className="text-xs font-bold text-textMuted uppercase mb-2 block">Select Employee</label>
-          <select 
-            value={selectedEmployeeId}
-            onChange={(e) => setSelectedEmployeeId(e.target.value)}
-            className="w-full p-3 bg-slate-50 border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-          >
-            <option value="">Choose employee...</option>
-            {employees.map(emp => (
-              <option key={emp.id} value={emp.id}>{emp.name} ({emp.id})</option>
-            ))}
-          </select>
-        </Card>
+        {!session?.isEmployee && (
+          <Card className="p-4">
+            <label className="text-xs font-bold text-textMuted uppercase mb-2 block">Select Employee</label>
+            <select 
+              value={selectedEmployeeId}
+              onChange={(e) => setSelectedEmployeeId(e.target.value)}
+              className="w-full p-3 bg-slate-50 border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            >
+              <option value="">Choose employee...</option>
+              {employees.map(emp => (
+                <option key={emp.id} value={emp.id}>{emp.name} ({emp.id})</option>
+              ))}
+            </select>
+          </Card>
+        )}
 
         {/* Status Card */}
         <Card className="p-6 relative overflow-hidden">
@@ -147,17 +153,17 @@ const MobilePunch = () => {
           <div className="grid grid-cols-2 gap-4 mt-6 border-t border-border pt-4">
             <div className="text-center">
               <p className="text-[10px] text-textMuted uppercase font-bold mb-1">Punch In</p>
-              <p className={`text-sm font-bold ${todayPunches.find(p => p.type === 'Punch In') ? 'text-emerald-500' : 'text-slate-300'}`}>
-                {todayPunches.find(p => p.type === 'Punch In') 
-                  ? new Date(todayPunches.find(p => p.type === 'Punch In').timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+              <p className={`text-sm font-bold ${todayPunches.find(p => p && p.type === 'Punch In') ? 'text-emerald-500' : 'text-slate-300'}`}>
+                {todayPunches.find(p => p && p.type === 'Punch In') 
+                  ? new Date(todayPunches.find(p => p && p.type === 'Punch In').timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
                   : 'No Data'}
               </p>
             </div>
             <div className="text-center">
               <p className="text-[10px] text-textMuted uppercase font-bold mb-1">Punch Out</p>
-              <p className={`text-sm font-bold ${todayPunches.find(p => p.type === 'Punch Out') ? 'text-red-500' : 'text-slate-300'}`}>
-                {todayPunches.find(p => p.type === 'Punch Out') 
-                  ? new Date(todayPunches.find(p => p.type === 'Punch Out').timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+              <p className={`text-sm font-bold ${todayPunches.find(p => p && p.type === 'Punch Out') ? 'text-red-500' : 'text-slate-300'}`}>
+                {todayPunches.find(p => p && p.type === 'Punch Out') 
+                  ? new Date(todayPunches.find(p => p && p.type === 'Punch Out').timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
                   : 'No Data'}
               </p>
             </div>

@@ -28,7 +28,12 @@ const Sidebar = ({ isCollapsed }: { isCollapsed: boolean }) => {
     { to: '/admin', label: 'Admin Dashboard', icon: IconDashboard },
   ];
 
-  const navItems = session?.isSuperAdmin ? superAdminNav : companyNav;
+  const employeeNav = [
+    { to: '/attendance/mobile-punch', label: 'Mobile Punch', icon: IconDevice },
+    { to: '/attendance/individual', label: 'Individual Report', icon: IconFileText },
+  ];
+
+  const navItems = session?.isSuperAdmin ? superAdminNav : session?.isEmployee ? employeeNav : companyNav;
 
   return (
     <aside className={`fixed left-0 top-0 h-full ${isCollapsed ? 'w-20' : 'w-64'} bg-surface border-r border-border flex flex-col z-[60] transition-all duration-300 transform lg:translate-x-0 ${isCollapsed ? '-translate-x-full lg:translate-x-0' : 'translate-x-0'}`}>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Button, Input, Select } from '../components/UI';
 import { IconCheckCircle, IconX, IconUsers, IconSettings } from '../components/Icons';
-import { saveLocalEmployee, getOrgSettings } from '../services/api';
+import { saveLocalEmployee, getOrgSettings, fetchEmployees, checkGlobalEmailExists } from '../services/api';
 import { OrgSettings } from '../types';
 import { Employee } from '../types';
 
@@ -34,6 +34,8 @@ const CreateEmployee = () => {
     joinDate: new Date().toISOString().split('T')[0]
   });
 
+  const [error, setError] = useState('');
+
   useEffect(() => {
     const loadSettings = async () => {
       const settings = await getOrgSettings();
@@ -45,6 +47,15 @@ const CreateEmployee = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
+
+    // Check unique email
+    const emailExists = await checkGlobalEmailExists(formData.email);
+    if (emailExists) {
+       setError('An employee with this email/phone already exists in the system.');
+       setLoading(false);
+       return;
+    }
 
     const newEmployee: Employee = {
       id: formData.officeId || Math.random().toString(36).substr(2, 6).toUpperCase(),
@@ -92,6 +103,11 @@ const CreateEmployee = () => {
       </div>
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {error && (
+            <div className="md:col-span-2 p-3 bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold rounded-lg text-center uppercase">
+                {error}
+            </div>
+        )}
         <Card className="p-6 md:col-span-1 space-y-6">
           <h2 className="text-lg font-bold text-[#1cbdb0] uppercase flex items-center gap-2">
             <IconUsers className="w-5 h-5" /> Basic Information

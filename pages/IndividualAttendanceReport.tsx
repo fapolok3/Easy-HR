@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Badge } from '../components/UI';
 import { IconSearch, IconCalendar, IconUser, IconChevronDown, IconFileText, IconClock, IconCheckCircle, IconXCircle, IconAlertCircle } from '../components/Icons';
-import { fetchAttendance, fetchEmployees } from '../services/api';
+import { fetchAttendance, fetchEmployees, getCurrentSession } from '../services/api';
 import { AttendanceRecord, Employee } from '../types';
 
 const IndividualAttendanceReport = () => {
@@ -20,8 +20,12 @@ const IndividualAttendanceReport = () => {
     const loadEmployees = async () => {
       const data = await fetchEmployees();
       setEmployees(data);
-      // By default, don't select anyone yet or select the first one
-      // if (data.length > 0) setSelectedEmployee(data[0]);
+      
+      const session = getCurrentSession();
+      if (session?.isEmployee && session.employeeId) {
+        const emp = data.find(e => e.id === session.employeeId);
+        if (emp) setSelectedEmployee(emp);
+      }
     };
     loadEmployees();
   }, []);
@@ -64,18 +68,19 @@ const IndividualAttendanceReport = () => {
 
   // Summary Calculations
   const summary = {
-    present: records.filter(r => r.status === 'Present' || r.status === 'On Time' || r.status === 'Late').length,
-    absent: records.filter(r => r.status === 'Absent').length,
-    late: records.filter(r => r.isLate).length,
-    earlyExit: records.filter(r => r.isEarlyExit).length,
-    leave: records.filter(r => r.status === 'Leave').length,
+    present: records.filter(r => r && (r.status === 'Present' || r.status === 'On Time' || r.status === 'Late')).length,
+    absent: records.filter(r => r && r.status === 'Absent').length,
+    late: records.filter(r => r && r.isLate).length,
+    earlyExit: records.filter(r => r && r.isEarlyExit).length,
+    leave: records.filter(r => r && r.status === 'Leave').length,
     totalWorkingHours: records.reduce((acc, r) => {
-        if(r.hours && r.hours !== '-') {
+        if(r && r.hours && r.hours !== '-') {
             return acc + parseFloat(r.hours);
         }
         return acc;
     }, 0).toFixed(2),
     expectedWorkingHours: records.reduce((acc, r) => {
+        if (!r) return acc;
         const isCurrentMonth = selectedMonth === today.getMonth() && selectedYear === today.getFullYear();
         const recordDate = new Date(r.date);
         const reportToday = new Date();
@@ -127,41 +132,43 @@ const IndividualAttendanceReport = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Left Sidebar: Employee Selection */}
-        <div className="lg:col-span-1 space-y-4">
-          <Card className="p-4">
-            <h2 className="text-sm font-bold text-text mb-3 uppercase tracking-wider">Select Employee</h2>
-            <div className="relative mb-4">
-              <input 
-                type="text" 
-                placeholder="Search..." 
-                className="w-full bg-surfaceHighlight border border-border rounded py-2 pl-3 pr-8 text-sm focus:outline-none focus:border-primary"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <IconSearch className="absolute right-2 top-2.5 w-4 h-4 text-textMuted" />
-            </div>
-            <div className="max-h-[500px] overflow-y-auto space-y-2 pr-1">
-              {filteredEmployeesList.map(emp => (
-                <div 
-                  key={emp.id}
-                  onClick={() => setSelectedEmployee(emp)}
-                  className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-all border ${selectedEmployee?.id === emp.id ? 'bg-primary/10 border-primary shadow-sm' : 'hover:bg-surfaceHighlight border-transparent'}`}
-                >
-                  <div className="w-8 h-8 rounded-full bg-white border border-border flex items-center justify-center overflow-hidden flex-shrink-0">
-                    {emp.avatar ? <img src={emp.avatar} alt="" className="w-full h-full object-cover" /> : <IconUser className="w-4 h-4 text-textMuted" />}
+        {!getCurrentSession()?.isEmployee && (
+          <div className="lg:col-span-1 space-y-4">
+            <Card className="p-4">
+              <h2 className="text-sm font-bold text-text mb-3 uppercase tracking-wider">Select Employee</h2>
+              <div className="relative mb-4">
+                <input 
+                  type="text" 
+                  placeholder="Search..." 
+                  className="w-full bg-surfaceHighlight border border-border rounded py-2 pl-3 pr-8 text-sm focus:outline-none focus:border-primary"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <IconSearch className="absolute right-2 top-2.5 w-4 h-4 text-textMuted" />
+              </div>
+              <div className="max-h-[500px] overflow-y-auto space-y-2 pr-1">
+                {filteredEmployeesList.map(emp => (
+                  <div 
+                    key={emp.id}
+                    onClick={() => setSelectedEmployee(emp)}
+                    className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-all border ${selectedEmployee?.id === emp.id ? 'bg-primary/10 border-primary shadow-sm' : 'hover:bg-surfaceHighlight border-transparent'}`}
+                  >
+                    <div className="w-8 h-8 rounded-full bg-white border border-border flex items-center justify-center overflow-hidden flex-shrink-0">
+                      {emp.avatar ? <img src={emp.avatar} alt="" className="w-full h-full object-cover" /> : <IconUser className="w-4 h-4 text-textMuted" />}
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className={`text-xs font-bold truncate ${selectedEmployee?.id === emp.id ? 'text-primary' : 'text-text'}`}>{emp.name}</span>
+                      <span className="text-[10px] text-textMuted truncate">{emp.id}</span>
+                    </div>
                   </div>
-                  <div className="flex flex-col min-w-0">
-                    <span className={`text-xs font-bold truncate ${selectedEmployee?.id === emp.id ? 'text-primary' : 'text-text'}`}>{emp.name}</span>
-                    <span className="text-[10px] text-textMuted truncate">{emp.id}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        )}
 
         {/* Main Content: Report */}
-        <div className="lg:col-span-3 space-y-6">
+        <div className={getCurrentSession()?.isEmployee ? "lg:col-span-4 space-y-6" : "lg:col-span-3 space-y-6"}>
           {/* Controls */}
           <Card className="p-4 flex flex-wrap items-center gap-4">
             <div className="flex flex-col">

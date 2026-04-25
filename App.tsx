@@ -128,62 +128,64 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
           </div>
 
           {/* Center Search Bar - Hidden on small screens */}
-          <div className="flex-1 max-w-sm mx-4 hidden lg:block relative">
-            <div className="relative group">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-textMuted group-focus-within:text-primary transition-colors">
-                <IconSearch className="w-4 h-4" />
+          {!session?.isEmployee && (
+            <div className="flex-1 max-w-sm mx-4 hidden lg:block relative">
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-textMuted group-focus-within:text-primary transition-colors">
+                  <IconSearch className="w-4 h-4" />
+                </div>
+                <input 
+                  type="text" 
+                  placeholder="Search anything..." 
+                  className="block w-full pl-10 pr-3 py-1.5 bg-surfaceHighlight/50 border border-border rounded-xl text-sm placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-normal"
+                  value={globalSearchTerm}
+                  onChange={(e) => {
+                    setGlobalSearchTerm(e.target.value);
+                    setShowSearchSuggestions(true);
+                  }}
+                  onFocus={() => setShowSearchSuggestions(true)}
+                />
               </div>
-              <input 
-                type="text" 
-                placeholder="Search anything..." 
-                className="block w-full pl-10 pr-3 py-1.5 bg-surfaceHighlight/50 border border-border rounded-xl text-sm placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-normal"
-                value={globalSearchTerm}
-                onChange={(e) => {
-                  setGlobalSearchTerm(e.target.value);
-                  setShowSearchSuggestions(true);
-                }}
-                onFocus={() => setShowSearchSuggestions(true)}
-              />
-            </div>
 
-            {showSearchSuggestions && globalSearchTerm && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-surface border border-border rounded-xl shadow-2xl overflow-hidden z-[110] animate-in slide-in-from-top-2 duration-200">
-                <div className="p-2 border-b border-border bg-surfaceHighlight/30">
-                  <p className="text-[10px] font-bold text-textMuted uppercase tracking-wider">Employee Suggestions</p>
+              {showSearchSuggestions && globalSearchTerm && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-surface border border-border rounded-xl shadow-2xl overflow-hidden z-[110] animate-in slide-in-from-top-2 duration-200">
+                  <div className="p-2 border-b border-border bg-surfaceHighlight/30">
+                    <p className="text-[10px] font-bold text-textMuted uppercase tracking-wider">Employee Suggestions</p>
+                  </div>
+                  <div className="max-h-[300px] overflow-y-auto">
+                    {employees
+                      .filter(e => e.name.toLowerCase().includes(globalSearchTerm.toLowerCase()) || e.id.toLowerCase().includes(globalSearchTerm.toLowerCase()))
+                      .slice(0, 8)
+                      .map(emp => (
+                        <button
+                          key={emp.id}
+                          onClick={() => {
+                            navigate(`/employees/${emp.id}`);
+                            setGlobalSearchTerm('');
+                            setShowSearchSuggestions(false);
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-surfaceHighlight transition-colors border-b border-border last:border-0"
+                        >
+                          <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0">
+                            {emp.name.charAt(0)}
+                          </div>
+                          <div className="text-left overflow-hidden">
+                            <p className="text-sm font-bold text-text truncate uppercase tracking-tight">{emp.name}</p>
+                            <p className="text-[10px] text-textMuted truncate uppercase tracking-tight">{emp.id} • {emp.department}</p>
+                          </div>
+                        </button>
+                      ))}
+                    {employees.filter(e => e.name.toLowerCase().includes(globalSearchTerm.toLowerCase()) || e.id.toLowerCase().includes(globalSearchTerm.toLowerCase())).length === 0 && (
+                      <div className="p-4 text-center text-sm text-textMuted italic">No employees found.</div>
+                    )}
+                  </div>
                 </div>
-                <div className="max-h-[300px] overflow-y-auto">
-                  {employees
-                    .filter(e => e.name.toLowerCase().includes(globalSearchTerm.toLowerCase()) || e.id.toLowerCase().includes(globalSearchTerm.toLowerCase()))
-                    .slice(0, 8)
-                    .map(emp => (
-                      <button
-                        key={emp.id}
-                        onClick={() => {
-                          navigate(`/employees/${emp.id}`);
-                          setGlobalSearchTerm('');
-                          setShowSearchSuggestions(false);
-                        }}
-                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-surfaceHighlight transition-colors border-b border-border last:border-0"
-                      >
-                        <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0">
-                          {emp.name.charAt(0)}
-                        </div>
-                        <div className="text-left overflow-hidden">
-                          <p className="text-sm font-bold text-text truncate uppercase tracking-tight">{emp.name}</p>
-                          <p className="text-[10px] text-textMuted truncate uppercase tracking-tight">{emp.id} • {emp.department}</p>
-                        </div>
-                      </button>
-                    ))}
-                  {employees.filter(e => e.name.toLowerCase().includes(globalSearchTerm.toLowerCase()) || e.id.toLowerCase().includes(globalSearchTerm.toLowerCase())).length === 0 && (
-                    <div className="p-4 text-center text-sm text-textMuted italic">No employees found.</div>
-                  )}
-                </div>
-              </div>
-            )}
-            {showSearchSuggestions && (
-              <div className="fixed inset-0 z-[105]" onClick={() => setShowSearchSuggestions(false)} />
-            )}
-          </div>
+              )}
+              {showSearchSuggestions && (
+                <div className="fixed inset-0 z-[105]" onClick={() => setShowSearchSuggestions(false)} />
+              )}
+            </div>
+          )}
 
           <div className="flex items-center gap-3 md:gap-6">
              {/* Mobile search icon */}
@@ -204,7 +206,7 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                     className="flex flex-col text-right cursor-pointer hover:opacity-80 transition-opacity"
                   >
-                     <span className="text-xs text-text font-bold uppercase">{session?.isSuperAdmin ? 'Super Admin' : 'Company Admin'}</span>
+                     <span className="text-xs text-text font-bold uppercase">{session?.isSuperAdmin ? 'Super Admin' : session?.isEmployee ? 'Employee' : 'Company Admin'}</span>
                      <span className="text-[10px] text-primary uppercase">Menu</span>
                   </button>
 
@@ -217,7 +219,11 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
                       <div className="absolute right-0 top-full mt-2 w-48 bg-surface border border-border rounded-xl shadow-xl py-2 transition-all z-[100]">
                         <button 
                           onClick={() => {
-                            setShowProfileModal(true);
+                            if (session?.isEmployee) {
+                              navigate(`/employees/${session.employeeId}`);
+                            } else {
+                              setShowProfileModal(true);
+                            }
                             setIsUserMenuOpen(false);
                           }}
                           className="w-full flex items-center gap-3 px-4 py-2 text-sm text-textMuted hover:text-text hover:bg-surfaceHighlight transition-colors"
@@ -259,7 +265,7 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
                 {session?.userEmail.charAt(0)}
               </div>
               <div>
-                <h4 className="text-lg font-bold text-text">{session?.isSuperAdmin ? 'Super Admin' : 'Company Admin'}</h4>
+                <h4 className="text-lg font-bold text-text">{session?.isSuperAdmin ? 'Super Admin' : session?.isEmployee ? (employees.find(e => e.id === session.employeeId)?.name || 'Employee') : 'Company Admin'}</h4>
                 <p className="text-sm text-textMuted">{session?.userEmail}</p>
               </div>
             </div>
@@ -267,7 +273,7 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-3 bg-surfaceHighlight/30 rounded-lg border border-border">
                   <p className="text-[10px] text-textMuted uppercase font-bold mb-1">Role</p>
-                  <p className="text-sm font-medium">{session?.isSuperAdmin ? 'Full Access' : 'Company Manager'}</p>
+                  <p className="text-sm font-medium">{session?.isSuperAdmin ? 'Full Access' : session?.isEmployee ? 'Employee Access' : 'Company Manager'}</p>
                 </div>
                 <div className="p-3 bg-surfaceHighlight/30 rounded-lg border border-border">
                   <p className="text-[10px] text-textMuted uppercase font-bold mb-1">Account Type</p>

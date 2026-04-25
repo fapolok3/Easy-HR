@@ -71,43 +71,46 @@ const MobilePunchReport = () => {
                   <td colSpan={6} className="p-8 text-center text-textMuted italic">No mobile punches recorded for this date.</td>
                 </tr>
               ) : (
-                punches.map((punch, index) => (
-                  <tr key={punch.id} className="hover:bg-surfaceHighlight transition-colors">
-                    <td className="p-3 border-r border-border text-center text-textMuted">{index + 1}</td>
-                    <td className="p-3 border-r border-border">
-                      <div className="flex flex-col">
-                        <span className="font-bold text-text">{punch.employeeName}</span>
-                        <span className="text-xs text-textMuted font-mono">{punch.employeeId}</span>
-                      </div>
-                    </td>
-                    <td className="p-3 border-r border-border text-center">
-                      <Badge variant={punch.type === 'Punch In' ? 'success' : 'danger'}>
-                        {punch.type.toUpperCase()}
-                      </Badge>
-                    </td>
-                    <td className="p-3 border-r border-border text-center font-mono font-bold text-text">
-                      {new Date(punch.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                    </td>
-                    <td className="p-3 border-r border-border">
-                      <div className="flex flex-col">
-                        <span className="text-xs font-medium text-text">{punch.address}</span>
-                        <span className="text-[10px] text-textMuted font-mono">
-                          {punch.latitude.toFixed(6)}, {punch.longitude.toFixed(6)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="p-3 text-center">
-                      <a 
-                        href={`https://www.google.com/maps?q=${punch.latitude},${punch.longitude}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-primary hover:underline text-xs font-bold"
-                      >
-                        VIEW ON MAP
-                      </a>
-                    </td>
-                  </tr>
-                ))
+                punches.map((punch, index) => {
+                  if (!punch) return null;
+                  return (
+                    <tr key={punch.id} className="hover:bg-surfaceHighlight transition-colors">
+                      <td className="p-3 border-r border-border text-center text-textMuted">{index + 1}</td>
+                      <td className="p-3 border-r border-border">
+                        <div className="flex flex-col">
+                          <span className="font-bold text-text">{punch.employeeName}</span>
+                          <span className="text-xs text-textMuted font-mono">{punch.employeeId}</span>
+                        </div>
+                      </td>
+                      <td className="p-3 border-r border-border text-center">
+                        <Badge variant={punch.type === 'Punch In' ? 'success' : 'danger'}>
+                          {punch.type.toUpperCase()}
+                        </Badge>
+                      </td>
+                      <td className="p-3 border-r border-border text-center font-mono font-bold text-text">
+                        {new Date(punch.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                      </td>
+                      <td className="p-3 border-r border-border">
+                        <div className="flex flex-col">
+                          <span className="text-xs font-medium text-text">{punch.address}</span>
+                          <span className="text-[10px] text-textMuted font-mono">
+                            {punch.latitude.toFixed(6)}, {punch.longitude.toFixed(6)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-3 text-center">
+                        <a 
+                          href={`https://www.google.com/maps?q=${punch.latitude},${punch.longitude}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-primary hover:underline text-xs font-bold"
+                        >
+                          VIEW ON MAP
+                        </a>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

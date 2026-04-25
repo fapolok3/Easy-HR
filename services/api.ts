@@ -91,13 +91,16 @@ export const getCompanies = async (): Promise<Company[]> => {
       console.error('Error fetching companies:', error);
       return [];
     }
-    return (data || []).map((item: any) => ({
-      id: item.id,
-      name: item.name,
-      adminEmail: item.admin_email,
-      adminPassword: item.admin_password,
-      createdAt: item.created_at
-    }));
+    return (data || []).map((item: any) => {
+      if (!item) return null;
+      return {
+        id: item.id,
+        name: item.name,
+        adminEmail: item.admin_email,
+        adminPassword: item.admin_password,
+        createdAt: item.created_at
+      };
+    }).filter((c): c is Company => c !== null);
   } catch (err) {
     console.error('Fetch companies exception:', err);
     return [];
@@ -332,6 +335,79 @@ export const saveApiConfig = async (config: ApiConfig) => {
 };
 
 // --- EMPLOYEE PERSISTENCE ---
+export const getEmployeeByCredentials = async (emailPhone: string, password: string): Promise<Employee | null> => {
+  try {
+    if (!checkSupabase()) return null;
+    
+    // Search by email
+    let { data, error } = await supabase.from('employees')
+      .select('*')
+      .eq('email', emailPhone)
+      .eq('password', password)
+      .maybeSingle();
+      
+    // If not found, search by phone
+    if (!data) {
+      const result = await supabase.from('employees')
+        .select('*')
+        .eq('phone', emailPhone)
+        .eq('password', password)
+        .maybeSingle();
+      data = result.data;
+      error = result.error;
+    }
+
+    if (error || !data) return null;
+
+    return {
+      id: data.id,
+      name: data.name,
+      designation: data.designation,
+      department: data.department,
+      status: data.status,
+      joinDate: data.join_date,
+      endDate: data.end_date,
+      email: data.email,
+      phone: data.phone,
+      avatar: data.avatar,
+      zkDeviceId: data.zk_device_id,
+      shift: data.shift,
+      shiftEffectiveDate: data.shift_effective_date,
+      employmentType: data.employment_type,
+      gender: data.gender,
+      leavePolicy: data.leave_policy,
+      workplace: data.workplace,
+      lineManager: data.line_manager,
+      isAdmin: data.is_admin,
+      isLineManager: data.is_line_manager,
+      password: data.password,
+      companyId: data.company_id
+    };
+  } catch (err) {
+    console.error('getEmployeeByCredentials error:', err);
+    return null;
+  }
+};
+
+export const checkGlobalEmailExists = async (email: string): Promise<boolean> => {
+  try {
+    if (!checkSupabase()) return false;
+    const { count, error } = await supabase
+      .from('employees')
+      .select('*', { count: 'exact', head: true })
+      .or(`email.eq.${email},phone.eq.${email}`);
+    
+    if (error) {
+      console.error('checkGlobalEmailExists error:', error);
+      return false;
+    }
+    return (count || 0) > 0;
+  } catch (err) {
+    console.error(err);
+    return false;
+  }
+};
+
 export const getLocalEmployees = async (): Promise<Employee[]> => {
   try {
     if (!checkSupabase()) return [];
@@ -345,29 +421,33 @@ export const getLocalEmployees = async (): Promise<Employee[]> => {
       return [];
     }
 
-    return data.map((item: any) => ({
-      id: item.id,
-      name: item.name,
-      designation: item.designation,
-      department: item.department,
-      status: item.status,
-      joinDate: item.join_date,
-      endDate: item.end_date,
-      email: item.email,
-      phone: item.phone,
-      avatar: item.avatar,
-      zkDeviceId: item.zk_device_id,
-      shift: item.shift,
-      shiftEffectiveDate: item.shift_effective_date,
-      employmentType: item.employment_type,
-      gender: item.gender,
-      leavePolicy: item.leave_policy,
-      workplace: item.workplace,
-      lineManager: item.line_manager,
-      isAdmin: item.is_admin,
-      isLineManager: item.is_line_manager,
-      password: item.password
-    }));
+    return (data || []).map((item: any) => {
+      if (!item) return null;
+      return {
+        id: item.id,
+        name: item.name,
+        designation: item.designation,
+        department: item.department,
+        status: item.status,
+        joinDate: item.join_date,
+        endDate: item.end_date,
+        email: item.email,
+        phone: item.phone,
+        avatar: item.avatar,
+        zkDeviceId: item.zk_device_id,
+        shift: item.shift,
+        shiftEffectiveDate: item.shift_effective_date,
+        employmentType: item.employment_type,
+        gender: item.gender,
+        leavePolicy: item.leave_policy,
+        workplace: item.workplace,
+        lineManager: item.line_manager,
+        isAdmin: item.is_admin,
+        isLineManager: item.is_line_manager,
+        password: item.password,
+        companyId: item.company_id
+      };
+    }).filter((e): e is Employee => e !== null);
   } catch (err) {
     console.error(err);
     return [];
@@ -436,18 +516,21 @@ export const getLeaveRequests = async (): Promise<LeaveRequest[]> => {
       return [];
     }
 
-    return data.map((item: any) => ({
-      id: item.id,
-      employeeId: item.employee_id,
-      employeeName: item.employee_name,
-      leaveCategory: item.leave_category,
-      startDate: item.start_date,
-      endDate: item.end_date,
-      reason: item.reason,
-      status: item.status,
-      appliedDate: item.applied_date,
-      attachment: item.attachment
-    }));
+    return (data || []).map((item: any) => {
+      if (!item) return null;
+      return {
+        id: item.id,
+        employeeId: item.employee_id,
+        employeeName: item.employee_name,
+        leaveCategory: item.leave_category,
+        startDate: item.start_date,
+        endDate: item.end_date,
+        reason: item.reason,
+        status: item.status,
+        appliedDate: item.applied_date,
+        attachment: item.attachment
+      };
+    }).filter((r): r is LeaveRequest => r !== null);
   } catch (err) {
     console.error(err);
     return [];
@@ -511,16 +594,19 @@ export const getMobilePunches = async (): Promise<MobilePunch[]> => {
       return [];
     }
 
-    return data.map((item: any) => ({
-      id: item.id,
-      employeeId: item.employee_id,
-      employeeName: item.employee_name,
-      type: item.type,
-      timestamp: item.timestamp,
-      latitude: item.latitude,
-      longitude: item.longitude,
-      address: item.address
-    }));
+    return (data || []).map((item: any) => {
+      if (!item) return null;
+      return {
+        id: item.id,
+        employeeId: item.employee_id,
+        employeeName: item.employee_name,
+        type: item.type,
+        timestamp: item.timestamp,
+        latitude: item.latitude,
+        longitude: item.longitude,
+        address: item.address
+      };
+    }).filter((p): p is MobilePunch => p !== null);
   } catch (err) {
     console.error(err);
     return [];

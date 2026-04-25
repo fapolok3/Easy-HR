@@ -20,6 +20,7 @@ export interface Employee {
   isAdmin?: boolean;
   isLineManager?: boolean;
   password?: string;
+  companyId?: string;
 }
 
 export interface Fingerprint {
@@ -136,6 +137,8 @@ export interface Company {
 export interface AuthSession {
   userEmail: string;
   isSuperAdmin: boolean;
+  isEmployee?: boolean;
+  employeeId?: string;
   companyId?: string;
 }
 

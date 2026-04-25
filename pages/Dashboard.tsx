@@ -2,10 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, AreaChart, Area } from 'recharts';
 import { Card, Badge } from '../components/UI';
 import { IconUsers, IconClock, IconCheckCircle } from '../components/Icons';
-import { fetchEmployees, fetchAttendance } from '../services/api';
+import { fetchEmployees, fetchAttendance, getCurrentSession } from '../services/api';
 import { Employee, AttendanceRecord } from '../types';
+import { Navigate } from 'react-router-dom';
 
 const Dashboard = () => {
+  const session = getCurrentSession();
+  if (session?.isEmployee) {
+    return <Navigate to="/attendance/mobile-punch" replace />;
+  }
   const [currentTime, setCurrentTime] = useState(new Date());
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
