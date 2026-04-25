@@ -1,17 +1,24 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import * as XLSX from 'xlsx';
 import { Card, Button, Input, Badge, Select, Modal } from '../components/UI';
-import { IconSearch, IconUsers, IconCheckCircle, IconX, IconFilter, IconChevronDown, IconChevronUp } from '../components/Icons';
-import { fetchEmployees, getOrgSettings, bulkUpdateEmployees } from '../services/api';
+import { IconSearch, IconUsers, IconCheckCircle, IconX, IconFilter, IconChevronDown, IconChevronUp, IconDownload, IconUpload } from '../components/Icons';
+import { fetchEmployees, getOrgSettings, bulkUpdateEmployees, saveBulkEmployees } from '../services/api';
 import { Employee, OrgSettings } from '../types';
 
 const Employees = () => {
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isFilterVisible, setIsFilterVisible] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(50);
   
   const [orgSettings, setOrgSettings] = useState<OrgSettings>({
     departments: [],
@@ -77,14 +84,92 @@ const Employees = () => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
+  const downloadSample = () => {
+    const headers = [['ID', 'Name', 'Email', 'Password', 'Department', 'Designation', 'Gender', 'Employment Type', 'Workplace', 'Status', 'Join Date']];
+    const ws = XLSX.utils.aoa_to_sheet(headers);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Employees");
+    XLSX.writeFile(wb, "employee_bulk_upload_sample.xlsx");
+  };
+
+  const handleBulkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws) as any[];
+
+        const formattedEmployees: Partial<Employee>[] = data.map(item => ({
+          id: String(item.ID || item.id || `EMP${Math.floor(Math.random() * 10000)}`),
+          name: item.Name || item.name,
+          email: item.Email || item.email,
+          password: item.Password || item.password || '123456',
+          department: item.Department || item.department,
+          designation: item.Designation || item.designation,
+          gender: item.Gender || item.gender,
+          employmentType: item['Employment Type'] || item.employmentType,
+          workplace: item.Workplace || item.workplace,
+          status: item.Status || item.status || 'Active',
+          joinDate: item['Join Date'] || item.joinDate || new Date().toISOString().split('T')[0]
+        }));
+
+        await saveBulkEmployees(formattedEmployees);
+        await loadEmployees();
+        alert(`Successfully imported ${formattedEmployees.length} employees.`);
+      } catch (err) {
+        console.error('Error parsing excel:', err);
+        alert('Failed to parse the excel file. Please ensure it follows the sample format.');
+      } finally {
+        setIsUploading(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={handleBulkUpload} 
+        className="hidden" 
+        accept=".xlsx, .xls, .csv" 
+      />
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
            <h1 className="text-3xl font-bold text-text">Manage Employees</h1>
            <p className="text-textMuted">View and manage all employee records in one place.</p>
         </div>
         <div className="flex items-center gap-3">
+           <div className="flex items-center gap-2 bg-surfaceHighlight p-2 rounded-lg border border-border focus-within:ring-2 focus-within:ring-primary/20">
+             <span className="text-[10px] text-textMuted uppercase font-bold">Rows:</span>
+             <select 
+               value={rowsPerPage} 
+               onChange={(e) => {
+                 setRowsPerPage(Number(e.target.value));
+                 setCurrentPage(1);
+               }}
+               className="bg-transparent text-xs font-bold rounded p-1 outline-none cursor-pointer"
+             >
+               {[50, 100, 500, 1000].map(size => (
+                 <option key={size} value={size}>{size}</option>
+               ))}
+             </select>
+           </div>
+           <Button variant="secondary" onClick={downloadSample} className="gap-2">
+             <IconDownload className="w-4 h-4" /> Sample
+           </Button>
+           <Button variant="secondary" onClick={() => fileInputRef.current?.click()} isLoading={isUploading} className="gap-2">
+             <IconUpload className="w-4 h-4" /> Bulk Upload
+           </Button>
            {selectedIds.length > 0 && (
              <Button variant="primary" onClick={() => navigate('/employees/bulk', { state: { ids: selectedIds } })} className="animate-in fade-in slide-in-from-right-4">
                Manage Employees ({selectedIds.length})
@@ -234,7 +319,9 @@ const Employees = () => {
                     </td>
                  </tr>
               ) : (
-                filteredEmployees.map((emp) => (
+                filteredEmployees
+                  .slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)
+                  .map((emp) => (
                   <tr key={emp.id} className={`hover:bg-surfaceHighlight/50 transition-colors ${selectedIds.includes(emp.id) ? 'bg-primary/5' : ''}`}>
                     <td className="px-6 py-4">
                       <input 
@@ -273,6 +360,35 @@ const Employees = () => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Pagination Footer */}
+        <div className="p-4 border-t border-border flex items-center justify-end gap-4">
+          <div className="flex items-center gap-4">
+            <span className="text-xs text-textMuted uppercase font-bold">
+              {Math.min((currentPage - 1) * rowsPerPage + 1, filteredEmployees.length)} - {Math.min(currentPage * rowsPerPage, filteredEmployees.length)} OF {filteredEmployees.length}
+            </span>
+            <div className="flex items-center gap-1">
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(prev => prev - 1)}
+                className="p-1 min-w-[32px]"
+              >
+                &lt;
+              </Button>
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                disabled={currentPage * rowsPerPage >= filteredEmployees.length}
+                onClick={() => setCurrentPage(prev => prev + 1)}
+                className="p-1 min-w-[32px]"
+              >
+                &gt;
+              </Button>
+            </div>
+          </div>
         </div>
       </Card>
     </div>

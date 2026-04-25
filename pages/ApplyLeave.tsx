@@ -15,6 +15,9 @@ const ApplyLeave = () => {
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
+  const [empSearchTerm, setEmpSearchTerm] = useState('');
+  const [showEmpList, setShowEmpList] = useState(false);
+  
   const [selectedCategory, setSelectedCategory] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -118,16 +121,51 @@ const ApplyLeave = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <UISelect 
-              label="Select Employee"
-              value={selectedEmployeeId}
-              onChange={e => setSelectedEmployeeId(e.target.value)}
-              options={[
-                { label: 'Choose Employee', value: '' },
-                ...employees.map(e => ({ label: e.name, value: e.id }))
-              ]}
-              required
-            />
+            <div className="relative">
+              <Input 
+                label="Search Employee"
+                placeholder="Type name or ID..."
+                value={empSearchTerm}
+                onChange={(e) => {
+                  setEmpSearchTerm(e.target.value);
+                  setShowEmpList(true);
+                  if (selectedEmployeeId) setSelectedEmployeeId('');
+                }}
+                onFocus={() => setShowEmpList(true)}
+              />
+              {showEmpList && empSearchTerm && (
+                <div className="absolute z-50 w-full mt-1 bg-surface border border-border rounded-xl shadow-2xl max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-2">
+                  {employees
+                    .filter(e => e.name.toLowerCase().includes(empSearchTerm.toLowerCase()) || e.id.toLowerCase().includes(empSearchTerm.toLowerCase()))
+                    .map(emp => (
+                      <button
+                        key={emp.id}
+                        type="button"
+                        className="w-full text-left p-3 hover:bg-surfaceHighlight transition-colors border-b border-border last:border-0 flex items-center gap-3"
+                        onClick={() => {
+                          setSelectedEmployeeId(emp.id);
+                          setEmpSearchTerm(`${emp.name} (${emp.id})`);
+                          setShowEmpList(false);
+                        }}
+                      >
+                        <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
+                          {emp.name.split(' ').map(n => n[0]).join('')}
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-text uppercase">{emp.name}</p>
+                          <p className="text-[10px] text-textMuted uppercase">{emp.id} • {emp.department}</p>
+                        </div>
+                      </button>
+                    ))}
+                  {employees.filter(e => e.name.toLowerCase().includes(empSearchTerm.toLowerCase()) || e.id.toLowerCase().includes(empSearchTerm.toLowerCase())).length === 0 && (
+                    <div className="p-4 text-center text-xs text-textMuted italic">No employees found.</div>
+                  )}
+                </div>
+              )}
+              {showEmpList && (
+                <div className="fixed inset-0 z-40" onClick={() => setShowEmpList(false)} />
+              )}
+            </div>
 
             {selectedEmployee && (
               <>

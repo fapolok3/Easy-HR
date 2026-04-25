@@ -59,7 +59,8 @@ const CreateEmployee = () => {
       zkDeviceId: formData.deviceId,
       shift: formData.shift,
       shiftEffectiveDate: formData.shiftEffectiveDate,
-      leavePolicy: formData.leavePolicy
+      leavePolicy: formData.leavePolicy,
+      password: formData.password
     };
 
     await saveLocalEmployee(newEmployee);
@@ -126,6 +127,15 @@ const CreateEmployee = () => {
             placeholder="john@example.com" 
             value={formData.email}
             onChange={e => setFormData({...formData, email: e.target.value})}
+            required 
+          />
+
+          <Input 
+            label="Password" 
+            type="password" 
+            placeholder="••••••••" 
+            value={formData.password}
+            onChange={e => setFormData({...formData, password: e.target.value})}
             required 
           />
           

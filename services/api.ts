@@ -1,4 +1,4 @@
-import { ApiConfig, Employee, AttendanceRecord, Device, AttendanceApiResponse, Company, AuthSession, OrgSettings, LeaveRequest, MobilePunch, Shift, Holiday, LeavePolicy } from '../types';
+import { ApiConfig, Employee, AttendanceRecord, Device, AttendanceApiResponse, Company, AuthSession, OrgSettings, LeaveRequest, MobilePunch, Shift, Holiday, LeavePolicy, Fingerprint, EnrollmentStatus } from '../types';
 import { supabase } from './supabaseClient';
 
 export const checkSupabase = () => {
@@ -1022,6 +1022,173 @@ export const bulkUpdateEmployees = async (employees: Employee[], updates: Partia
     if (error) throw error;
   } catch (err) {
     console.error('Error in bulk update:', err);
+    throw err;
+  }
+};
+
+// --- DEVICE ALLOCATIONS & ENROLLMENT (Based on Inovace docs) ---
+
+export const getFingerprints = async (personIdentifier: string): Promise<Fingerprint[]> => {
+  try {
+    const encodedId = encodeURIComponent(personIdentifier);
+    return await apiFetch(`/people/${encodedId}/fingerprints`);
+  } catch (err) {
+    console.error('Error fetching fingerprints:', err);
+    return [];
+  }
+};
+
+export const deleteFingerprints = async (personIdentifier: string, fingerprints: { finger_id?: number, hand?: string, finger?: string }[]) => {
+  try {
+    const config = await getApiConfig();
+    const encodedId = encodeURIComponent(personIdentifier);
+    const url = `${config.baseUrl.replace(/\/$/, '')}/people/${encodedId}/fingerprints?api_token=${config.token}`;
+    
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: { 
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ fingerprints })
+    });
+
+    if (!response.ok) throw new Error('Delete failed');
+    return await response.json();
+  } catch (err) {
+    console.error('Error deleting fingerprints:', err);
+    throw err;
+  }
+};
+
+export const startEnrollment = async (deviceIdentifier: string, personIdentifier: string, hand: string, finger: string) => {
+  try {
+    const config = await getApiConfig();
+    const url = `${config.baseUrl.replace(/\/$/, '')}/devices/${deviceIdentifier}/startEnrollment?api_token=${config.token}`;
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ person_identifier: personIdentifier, hand, finger })
+    });
+
+    return await response.json();
+  } catch (err) {
+    console.error('Error starting enrollment:', err);
+    throw err;
+  }
+};
+
+export const stopEnrollment = async (deviceIdentifier: string) => {
+  try {
+    const config = await getApiConfig();
+    const url = `${config.baseUrl.replace(/\/$/, '')}/devices/${deviceIdentifier}/stopEnrollment?api_token=${config.token}`;
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Accept': 'application/json' }
+    });
+
+    return await response.json();
+  } catch (err) {
+    console.error('Error stopping enrollment:', err);
+    throw err;
+  }
+};
+
+export const getEnrollmentStatus = async (deviceId: string, personId: string): Promise<EnrollmentStatus> => {
+  try {
+    const config = await getApiConfig();
+    const url = `${config.baseUrl.replace(/\/$/, '')}/devices/enrollment_status?api_token=${config.token}&device_id=${deviceId}&person_id=${personId}`;
+    
+    // The documentation says GET with Body, which is unusual for fetch/GET. 
+    // Usually, this would be query params. Let's try query params first as shown in my URL string above.
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' }
+    });
+
+    return await response.json();
+  } catch (err) {
+    console.error('Error getting enrollment status:', err);
+    throw err;
+  }
+};
+
+export const updateDeviceAllocation = async (deviceIdentifier: string, personIdentifier: string, action: 'allocate' | 'revoke') => {
+  try {
+    const config = await getApiConfig();
+    const url = `${config.baseUrl.replace(/\/$/, '')}/devices/${deviceIdentifier}/allocations?api_token=${config.token}`;
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify([{ person_identifier: personIdentifier, action }])
+    });
+
+    return await response.json();
+  } catch (err) {
+    console.error(`Error updating allocation (${action}):`, err);
+    throw err;
+  }
+};
+
+export const batchDeviceAllocations = async (action: 'allocate' | 'revoke', personIdentifiers: string[], deviceIds: string[]) => {
+  try {
+    const config = await getApiConfig();
+    const url = `${config.baseUrl.replace(/\/$/, '')}/devices/batch-allocations?api_token=${config.token}`;
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ action, person_identifiers: personIdentifiers, device_ids: deviceIds })
+    });
+
+    return await response.json();
+  } catch (err) {
+    console.error('Error in batch allocations:', err);
+    throw err;
+  }
+};
+
+export const saveBulkEmployees = async (employees: Partial<Employee>[]) => {
+  try {
+    if (!checkSupabase()) return;
+    const session = getCurrentSession();
+    const companyId = session?.companyId;
+    if (!companyId) return;
+
+    const upsertData = employees.map(emp => ({
+      id: emp.id,
+      company_id: companyId,
+      name: emp.name || 'New Employee',
+      designation: emp.designation || 'Not Set',
+      department: emp.department || 'Not Set',
+      status: emp.status || 'Active',
+      join_date: emp.joinDate || new Date().toISOString().split('T')[0],
+      email: emp.email || '',
+      phone: emp.phone || '',
+      gender: emp.gender || 'Not Set',
+      employment_type: emp.employmentType || 'Full Time',
+      workplace: emp.workplace || 'Head Office',
+      password: emp.password || '123456'
+    }));
+
+    if (upsertData.length === 0) return;
+
+    const { error } = await supabase.from('employees').upsert(upsertData);
+    if (error) throw error;
+  } catch (err) {
+    console.error('Error in bulk saving employees:', err);
     throw err;
   }
 };

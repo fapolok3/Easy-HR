@@ -23,4 +23,14 @@ body {
   --color-danger: #ef4444;
   --color-text: #0f172a;
   --color-text-muted: #64748b;
+
+  @keyframes shake {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(10deg); }
+    75% { transform: rotate(-10deg); }
+  }
+}
+
+@utility shake {
+  animation: shake 0.3s ease-in-out infinite;
 }

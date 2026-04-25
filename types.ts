@@ -22,6 +22,24 @@ export interface Employee {
   password?: string;
 }
 
+export interface Fingerprint {
+  id: number;
+  project_id: number;
+  person_id: number;
+  hand: string;
+  finger: string;
+  active: boolean;
+}
+
+export interface EnrollmentStatus {
+  running: boolean;
+  status: boolean;
+  from: string;
+  to: string;
+  person_id: string;
+  name: string;
+}
+
 export interface AttendanceStat {
   label: string;
   value: number;

@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, Button, Input, Badge } from '../components/UI';
 import { IconSearch, IconDevice, IconCheckCircle } from '../components/Icons';
 import { fetchDevices } from '../services/api';
 import { Device } from '../types';
 
 const Devices = () => {
+  const navigate = useNavigate();
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -111,7 +113,12 @@ const Devices = () => {
                       </Badge>
                     </td>
                     <td className="px-6 py-4">
-                      <button className="text-primary hover:text-primaryHover font-medium text-xs">Configure</button>
+                      <button 
+                        onClick={() => navigate(`/devices/config/${dev.identifier}`)}
+                        className="text-primary hover:text-primaryHover font-medium text-xs bg-primary/5 px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        Configure
+                      </button>
                     </td>
                   </tr>
                 ))

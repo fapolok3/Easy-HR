@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, Button, Badge } from '../components/UI';
 import { IconSearch, IconCalendar, IconFilter, IconChevronDown, IconFileText } from '../components/Icons';
 import { fetchAttendance, fetchEmployees } from '../services/api';
@@ -6,6 +7,7 @@ import { AttendanceRecord, Employee } from '../types';
 import * as XLSX from 'xlsx';
 
 const Attendance = () => {
+  const navigate = useNavigate();
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -339,7 +341,10 @@ const Attendance = () => {
                       </div>
                     </td>
                     <td className="p-2 border-r border-border sticky left-[224px] z-20 bg-white group-hover:bg-slate-50 w-[250px] min-w-[250px] max-w-[250px]">
-                      <div className="flex items-center gap-3 p-1.5 rounded-lg bg-surfaceHighlight/50 border border-border/50">
+                      <div 
+                        className="flex items-center gap-3 p-1.5 rounded-lg bg-surfaceHighlight/50 border border-border/50 cursor-pointer hover:border-primary hover:bg-primary/5 transition-all"
+                        onClick={() => navigate(`/employees/${emp.id}`)}
+                      >
                          <div className="w-10 h-10 rounded-full bg-white border border-slate-200 shadow-sm overflow-hidden flex-shrink-0">
                            {emp.avatar ? (
                              <img src={emp.avatar} alt={emp.name} className="w-full h-full object-cover" />

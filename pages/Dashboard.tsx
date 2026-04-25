@@ -26,15 +26,31 @@ const Dashboard = () => {
           fetchEmployees(),
           fetchAttendance()
         ]);
-        setEmployees(empData);
-        setAttendance(attData);
+        setEmployees(empData || []);
+        setAttendance(attData || []);
       } catch (error) {
         console.error("Dashboard data fetch failed", error);
       } finally {
         setLoading(false);
       }
     };
+    
     loadDashboardData();
+    
+    // Polling for real-time updates
+    const pollInterval = setInterval(() => {
+      const refreshData = async () => {
+        try {
+          const attData = await fetchAttendance();
+          setAttendance(attData || []);
+        } catch (error) {
+          console.error("Dashboard poll failed", error);
+        }
+      };
+      refreshData();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(pollInterval);
   }, []);
 
   // Calculate Stats
@@ -59,16 +75,36 @@ const Dashboard = () => {
   // Fallback if empty for chart rendering
   const displayAttendanceData = attendanceData.length > 0 ? attendanceData : [{ name: 'No Data', value: 1, color: '#e2e8f0' }];
 
-  const recentActivity = todaysAttendance.slice(0, 5).map(a => ({
-    id: a.id,
-    user: a.employeeName,
-    action: a.checkIn !== '-' ? 'Checked In' : 'Absent',
-    time: a.checkIn,
-    status: a.status
-  }));
+  const recentActivity = todaysAttendance
+    .filter(a => a.checkIn !== '-')
+    .sort((a, b) => {
+      // Sort in descending order by check-in time
+      const timeA = a.checkIn || '';
+      const timeB = b.checkIn || '';
+      return timeB.localeCompare(timeA);
+    })
+    .slice(0, 15)
+    .map(a => {
+      let source = 'Device';
+      if (a.location?.toLowerCase().includes('mobile') || a.device?.toLowerCase().includes('mobile')) {
+        source = 'Mobile Punch';
+      } else if (a.device && a.device !== '-') {
+        source = `Device: ${a.device}`;
+      } else if (a.location && a.location !== '-') {
+        source = a.location;
+      }
+
+      return {
+        id: a.id,
+        user: a.employeeName,
+        source: source,
+        time: a.checkIn,
+        status: a.status
+      };
+    });
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
+    <div className="p-8 max-w-7xl mx-auto space-y-8 text-text">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -217,19 +253,24 @@ const Dashboard = () => {
                                   {activity.user.charAt(0)}
                               </div>
                               <div>
-                                  <p className="text-sm font-medium text-text">{activity.user}</p>
-                                  <p className="text-xs text-textMuted">{activity.action}</p>
+                                  <p className="text-sm font-bold text-text uppercase tracking-tight">{activity.user}</p>
+                                  <p className="text-[10px] text-textMuted uppercase font-bold">{activity.source}</p>
                               </div>
                           </div>
                           <div className="text-right">
-                              <p className="text-xs font-mono text-text">{activity.time}</p>
-                              <Badge variant={activity.status === 'Late' ? 'warning' : activity.status === 'Present' ? 'success' : 'default'}>
+                              <p className="text-sm font-mono font-bold text-text">{activity.time}</p>
+                              <Badge variant={activity.status === 'Late' ? 'warning' : activity.status === 'Present' || activity.status === 'On Time' ? 'success' : 'default'} className="text-[10px]">
                                   {activity.status}
                               </Badge>
                           </div>
                       </div>
                   )) : (
-                    <div className="py-8 text-center text-textMuted">No logs recorded today.</div>
+                    <div className="py-20 text-center flex flex-col items-center justify-center gap-4">
+                      <div className="p-4 bg-surfaceHighlight/50 rounded-full border border-border">
+                        <IconClock className="w-8 h-8 text-textMuted/30" />
+                      </div>
+                      <p className="text-sm text-textMuted italic max-w-[200px]">No logs recorded for today yet. Activity will appear here as employees punch in.</p>
+                    </div>
                   )}
               </div>
           </Card>
