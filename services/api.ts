@@ -1,4 +1,4 @@
-import { ApiConfig, Employee, AttendanceRecord, Device, AttendanceApiResponse, Company, AuthSession, OrgSettings, LeaveRequest, MobilePunch, Shift, Holiday, LeavePolicy, Fingerprint, EnrollmentStatus } from '../types';
+import { ApiConfig, Employee, AttendanceRecord, Device, AttendanceApiResponse, Company, AuthSession, OrgSettings, LeaveRequest, MobilePunch, Shift, Holiday, LeavePolicy, Fingerprint, EnrollmentStatus, AdvanceRoster } from '../types';
 import { supabase } from './supabaseClient';
 
 export const checkSupabase = () => {
@@ -877,6 +877,28 @@ export const fetchAttendance = async (startDate?: string, endDate?: string): Pro
     const allEmployees = await fetchEmployees();
     const dates = getDatesInRange(start, end);
 
+    // Fetch advance rosters for relevant months
+    const startObj = new Date(start);
+    const endObj = new Date(end);
+    const monthsNeeded = new Set<string>();
+    let curr = new Date(startObj.getFullYear(), startObj.getMonth(), 1);
+    while (curr <= endObj) {
+      const y = curr.getFullYear();
+      const m = String(curr.getMonth() + 1).padStart(2, '0');
+      monthsNeeded.add(`${y}-${m}`);
+      curr.setMonth(curr.getMonth() + 1);
+    }
+    
+    const advanceAssignmentsMap = new Map<string, string>();
+    for (const mStr of Array.from(monthsNeeded)) {
+       const rosters = await getAdvanceRoster(mStr);
+       rosters.forEach(r => {
+          Object.keys(r.assignments).forEach(dateStr => {
+             advanceAssignmentsMap.set(`${r.employeeId}-${dateStr}`, r.assignments[dateStr]);
+          });
+       });
+    }
+
     // Group Mobile Punches by employee and date
     const mobilePunches = await getMobilePunches();
     const mobilePunchesMap = new Map<string, { in?: string, out?: string }>();
@@ -969,9 +991,25 @@ export const fetchAttendance = async (startDate?: string, endDate?: string): Pro
           };
           source = 'Mobile';
         }
+        
+        // Priority for shift: 
+        // 1. Advance Roster override
+        // 2. Default employee shift
+        const advanceShiftId = advanceAssignmentsMap.get(`${empIdStr}-${date}`);
+        let shift = getEffectiveShift(emp, date, shifts);
+        let isOffDay = shift?.offDays?.includes(dayName);
 
-        const shift = getEffectiveShift(emp, date, shifts);
-        const isOffDay = shift?.offDays?.includes(dayName);
+        if (advanceShiftId === 'Off Day') {
+           isOffDay = true;
+           shift = null;
+        } else if (advanceShiftId) {
+           const found = shifts.find(s => s.id === advanceShiftId);
+           if (found) {
+              shift = found;
+              isOffDay = false; 
+           }
+        }
+
         const approvedLeave = leaveRequests.find(r => r.employeeId === emp.id && date >= r.startDate && date <= r.endDate);
         
         let status: AttendanceRecord['status'] = 'Absent';
@@ -1329,5 +1367,58 @@ export const saveBulkEmployees = async (employees: Partial<Employee>[]) => {
   } catch (err) {
     console.error('Error in bulk saving employees:', err);
     throw err;
+  }
+};
+
+export const getAdvanceRoster = async (month: string): Promise<AdvanceRoster[]> => {
+  try {
+    if (!checkSupabase()) return [];
+    const session = getCurrentSession();
+    const companyId = session?.companyId;
+    if (!companyId) return [];
+
+    const { data, error } = await supabase.from('advance_roster')
+      .select('*')
+      .eq('company_id', companyId)
+      .eq('month', month);
+
+    if (error) {
+       console.error('Error fetching advance roster:', error);
+       return [];
+    }
+
+    return (data || []).map(item => ({
+      id: item.id,
+      companyId: item.company_id,
+      employeeId: item.employee_id,
+      employeeName: item.employee_name,
+      month: item.month,
+      assignments: item.assignments || {}
+    }));
+  } catch (err) {
+    console.error(err);
+    return [];
+  }
+};
+
+export const saveAdvanceRoster = async (roster: AdvanceRoster) => {
+  try {
+    if (!checkSupabase()) return;
+    const session = getCurrentSession();
+    const companyId = roster.companyId || session?.companyId;
+    if (!companyId) return;
+
+    const { error } = await supabase.from('advance_roster').upsert({
+      id: roster.id || `${companyId}-${roster.employeeId}-${roster.month}`,
+      company_id: companyId,
+      employee_id: roster.employeeId,
+      employee_name: roster.employeeName,
+      month: roster.month,
+      assignments: roster.assignments
+    }, { onConflict: 'id' });
+
+    if (error) console.error('Error saving advance roster:', error);
+  } catch (err) {
+    console.error(err);
   }
 };

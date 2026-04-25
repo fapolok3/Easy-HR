@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, Input, Button, Modal, Select as UISelect } from '../components/UI';
 import { getOrgSettings, saveOrgSettings } from '../services/api';
 import { OrgSettings, Shift } from '../types';
-import { IconTrash, IconEdit, IconCheckCircle } from '../components/Icons';
+import { IconTrash, IconEdit, IconCheckCircle, IconClock } from '../components/Icons';
 
 const Shifts = () => {
+  const navigate = useNavigate();
   const [orgSettings, setOrgSettings] = useState<OrgSettings>({
     departments: [],
     designations: [],
@@ -88,10 +90,16 @@ const Shifts = () => {
           <h1 className="text-2xl md:text-3xl font-bold text-text uppercase tracking-tight">Shift Management</h1>
           <p className="text-sm text-textMuted">Configure and manage company working hours and rotas.</p>
         </div>
-        <Button onClick={() => handleOpenShiftModal()} className="bg-slate-800 text-white hover:bg-slate-700 h-9 px-4 text-sm">
-          <IconCheckCircle className="w-4 h-4 mr-2" />
-          Create Shift
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => navigate('/advance-rostering')} variant="secondary" className="h-9 px-4 text-sm whitespace-nowrap">
+            <IconClock className="w-4 h-4 mr-2" />
+            Advance Rostering
+          </Button>
+          <Button onClick={() => handleOpenShiftModal()} className="bg-slate-800 text-white hover:bg-slate-700 h-9 px-4 text-sm whitespace-nowrap">
+            <IconCheckCircle className="w-4 h-4 mr-2" />
+            Create Shift
+          </Button>
+        </div>
       </div>
 
       <Card className="p-2 md:p-4 overflow-hidden">

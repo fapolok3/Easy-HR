@@ -198,3 +198,12 @@ export interface MobilePunch {
   longitude: number;
   address: string;
 }
+
+export interface AdvanceRoster {
+  id?: string;
+  companyId?: string;
+  employeeId: string;
+  employeeName: string;
+  month: string; // YYYY-MM
+  assignments: Record<string, string>; // date (YYYY-MM-DD) -> shiftId
+}

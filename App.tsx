@@ -19,6 +19,7 @@ import AbsentReport from './pages/AbsentReport';
 import MobilePunch from './pages/MobilePunch';
 import MobilePunchReport from './pages/MobilePunchReport';
 import Holidays from './pages/Holidays';
+import AdvanceRostering from './pages/AdvanceRostering';
 import DeviceConfig from './pages/DeviceConfig';
 import Login from './pages/Login';
 import AdminPanel from './pages/AdminPanel';
@@ -339,6 +340,7 @@ const App = () => {
           <Route path="/devices/config/:id" element={<Layout><DeviceConfig /></Layout>} />
           <Route path="/settings" element={<Layout><Settings /></Layout>} />
           <Route path="/shifts" element={<Layout><Shifts /></Layout>} />
+          <Route path="/advance-rostering" element={<Layout><AdvanceRostering /></Layout>} />
           <Route path="/leave" element={<Layout><Leave /></Layout>} />
           <Route path="/apply-leave" element={<Layout><ApplyLeave /></Layout>} />
           <Route path="/approvals" element={<Layout><Approvals /></Layout>} />
