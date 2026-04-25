@@ -145,10 +145,10 @@ const Employees = () => {
       />
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-           <h1 className="text-3xl font-bold text-text">Manage Employees</h1>
-           <p className="text-textMuted">View and manage all employee records in one place.</p>
+           <h1 className="text-2xl md:text-3xl font-bold text-text uppercase tracking-tight">Employees</h1>
+           <p className="text-textMuted text-sm">View and manage all employee records in one place.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 md:gap-3">
            <div className="flex items-center gap-2 bg-surfaceHighlight p-2 rounded-lg border border-border focus-within:ring-2 focus-within:ring-primary/20">
              <span className="text-[10px] text-textMuted uppercase font-bold">Rows:</span>
              <select 

@@ -59,6 +59,21 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
     loadCompany();
   }, [session]);
 
+  useEffect(() => {
+    // Collapse sidebar by default on mobile
+    const handleResize = () => {
+      if (window.innerWidth < 1024) {
+        setIsSidebarCollapsed(true);
+      } else {
+        setIsSidebarCollapsed(false);
+      }
+    };
+    
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   if (isLoginPage) return <>{children}</>;
 
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -87,7 +102,16 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
   return (
     <div className="flex min-h-screen bg-background text-text font-sans selection:bg-primary/30">
       <Sidebar isCollapsed={isSidebarCollapsed} />
-      <div className={`${isSidebarCollapsed ? 'ml-20' : 'ml-64'} flex-1 flex flex-col min-h-screen transition-all duration-300`}>
+      
+      {/* Mobile Sidebar Overlay */}
+      {!isSidebarCollapsed && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-[55] lg:hidden animate-in fade-in duration-300"
+          onClick={() => setIsSidebarCollapsed(true)}
+        />
+      )}
+
+      <div className={`${isSidebarCollapsed ? 'ml-0 lg:ml-20' : 'ml-0 lg:ml-64'} flex-1 flex flex-col min-h-screen transition-all duration-300`}>
         {/* Top Header */}
         <header className="h-16 bg-surface/80 backdrop-blur-md border-b border-border sticky top-0 z-50 px-4 md:px-8 flex items-center justify-between font-bold">
           <div className="flex items-center gap-2 md:gap-4 text-textMuted text-sm ">

@@ -106,23 +106,23 @@ const Dashboard = () => {
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 text-text">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-text">Dashboard</h1>
-          <p className="text-textMuted">Welcome back, here's what's happening today.</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-text">Dashboard</h1>
+          <p className="text-textMuted text-sm md:text-base">Welcome back, here's what's happening today.</p>
         </div>
-        <div className="text-right">
-          <p className="text-2xl font-mono font-bold text-text">
+        <div className="text-left md:text-right bg-surfaceHighlight/30 p-3 rounded-xl border border-border md:bg-transparent md:p-0 md:border-0 w-full md:w-auto">
+          <p className="text-xl md:text-2xl font-mono font-bold text-text">
             {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           </p>
-          <p className="text-sm text-textMuted">
+          <p className="text-xs md:text-sm text-textMuted uppercase tracking-wider font-bold">
             {currentTime.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}
           </p>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-textMuted">Total Employees</h3>

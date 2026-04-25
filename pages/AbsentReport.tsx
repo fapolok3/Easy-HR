@@ -37,7 +37,7 @@ const AbsentReport = () => {
           <h1 className="text-2xl md:text-3xl font-bold text-text uppercase tracking-tight">Daily Absent Report</h1>
           <p className="text-sm text-textMuted">List of employees who were absent on the selected date.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 md:gap-3">
           <div className="flex items-center gap-2 bg-surfaceHighlight p-2 rounded-lg border border-border shadow-sm">
             <span className="text-[10px] text-textMuted uppercase font-bold">Rows:</span>
             <select 

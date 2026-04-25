@@ -145,8 +145,8 @@ const Attendance = () => {
   return (
     <div className="p-4 md:p-6 space-y-4 bg-background min-h-[calc(100vh-64px)] flex flex-col">
       {/* Header - Stays top */}
-      <div className="flex items-center justify-between border-b border-border pb-4 flex-shrink-0">
-        <h1 className="text-xl font-bold text-[#1cbdb0] uppercase tracking-wide">Detailed Report</h1>
+      <div className="flex flex-col sm:flex-row items-baseline sm:items-center justify-between gap-2 border-b border-border pb-4 flex-shrink-0">
+        <h1 className="text-xl md:text-2xl font-bold text-[#1cbdb0] uppercase tracking-wide">Detailed Report</h1>
         <button 
           onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
           className={`flex items-center gap-2 font-medium text-sm transition-colors ${showAdvancedFilters ? 'text-primary' : 'text-textMuted hover:text-text'}`}

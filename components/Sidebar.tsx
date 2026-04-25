@@ -31,7 +31,7 @@ const Sidebar = ({ isCollapsed }: { isCollapsed: boolean }) => {
   const navItems = session?.isSuperAdmin ? superAdminNav : companyNav;
 
   return (
-    <aside className={`fixed left-0 top-0 h-full ${isCollapsed ? 'w-20' : 'w-64'} bg-surface border-r border-border flex flex-col z-[60] transition-all duration-300`}>
+    <aside className={`fixed left-0 top-0 h-full ${isCollapsed ? 'w-20' : 'w-64'} bg-surface border-r border-border flex flex-col z-[60] transition-all duration-300 transform lg:translate-x-0 ${isCollapsed ? '-translate-x-full lg:translate-x-0' : 'translate-x-0'}`}>
       {/* Logo Area */}
       <div className="h-16 flex items-center px-6 border-b border-border overflow-hidden whitespace-nowrap">
         <div className="flex items-center gap-3">
@@ -43,7 +43,7 @@ const Sidebar = ({ isCollapsed }: { isCollapsed: boolean }) => {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto overflow-x-hidden">
+      <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto overflow-x-hidden no-scrollbar">
         {!isCollapsed && (
           <div className="px-3 mb-2 text-xs font-semibold text-textMuted uppercase tracking-wider">
             MENU
