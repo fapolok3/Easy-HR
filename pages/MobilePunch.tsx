@@ -182,19 +182,19 @@ const MobilePunch = () => {
         <div className="w-9" /> {/* Spacer */}
       </header>
 
-      <div className="p-4 md:p-8 max-w-md mx-auto w-full space-y-6">
+      <div className="p-3 md:p-6 max-w-[320px] mx-auto w-full space-y-4">
         {/* Employee Selection */}
         {!session?.isEmployee && (
-          <Card className="p-4">
-            <label className="text-xs font-bold text-textMuted uppercase mb-2 block">Select Employee</label>
+          <Card className="p-3">
+            <label className="text-[9px] font-black text-textMuted uppercase mb-1.5 block tracking-widest">Select Employee</label>
             <select 
               value={selectedEmployeeId}
               onChange={(e) => setSelectedEmployeeId(e.target.value)}
-              className="w-full p-3 bg-slate-50 border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full p-2.5 bg-slate-50 border border-border rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
             >
               <option value="">Choose employee...</option>
               {employees.map(emp => (
-                <option key={emp.id} value={emp.id}>{emp.name} ({emp.id})</option>
+                <option key={emp.id} value={emp.id}>{emp.name}</option>
               ))}
             </select>
           </Card>
