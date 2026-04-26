@@ -650,9 +650,18 @@ export const saveMobilePunch = async (punch: Omit<MobilePunch, 'id'>): Promise<M
     }
 
     if (!companyId) {
-      console.warn('saveMobilePunch: No companyId available after resolution attempts', { punch, session });
+      // If we are a Super Admin, and the employee doesn't have a companyId,
+      // maybe we can find a company that this employee belongs to if they are in the employees table
+      // (The code above already tried maybeSingle on employees table)
+      console.warn('saveMobilePunch: No companyId available after resolution attempts.', { 
+        punch, 
+        sessionCompanyId: session?.companyId,
+        isSuperAdmin: session?.isSuperAdmin 
+      });
       return null;
     }
+
+    console.log('saveMobilePunch: Inserting record into mobile_punches', { companyId, employeeId: punch.employeeId });
 
     const { data: insertedData, error } = await supabase.from('mobile_punches').insert({
       company_id: companyId,
@@ -667,6 +676,13 @@ export const saveMobilePunch = async (punch: Omit<MobilePunch, 'id'>): Promise<M
 
     if (error) {
        console.error('Error saving mobile punch to Supabase:', error);
+       // Inform the user about the probable cause
+       if (error.code === '42P01') {
+         console.error('CRITICAL: The table "mobile_punches" does not exist. Please run the SQL schema in your Supabase SQL Editor.');
+       }
+       if (error.code === '23503') {
+         console.error('CRITICAL: Foreign key violation. Check if company_id or employee_id exists in their respective tables.', { companyId, employeeId: punch.employeeId });
+       }
        return null;
     }
 

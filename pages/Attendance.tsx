@@ -306,7 +306,7 @@ const Attendance = () => {
                   </th>
                 ))}
               </tr>
-              <tr className="bg-[#15948a] text-[8px] uppercase tracking-widest sticky top-[20px] z-30 font-black">
+              <tr className="bg-[#15948a] text-[9px] uppercase tracking-widest sticky top-[25px] z-30 font-black">
                 {uniqueDates.map(date => (
                   <React.Fragment key={`${date}-sub`}>
                     <th className="px-2 py-1 border-r border-[#15a398] text-center">In</th>

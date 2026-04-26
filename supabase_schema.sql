@@ -1,6 +1,6 @@
 -- 1. Create Companies table
 CREATE TABLE IF NOT EXISTS companies (
-  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   admin_email TEXT UNIQUE NOT NULL,
   admin_password TEXT NOT NULL,
@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS companies (
 
 -- 2. Create Org Settings table
 CREATE TABLE IF NOT EXISTS org_settings (
-  company_id TEXT PRIMARY KEY REFERENCES companies(id) ON DELETE CASCADE,
+  company_id UUID PRIMARY KEY REFERENCES companies(id) ON DELETE CASCADE,
   departments JSONB DEFAULT '[]',
   designations JSONB DEFAULT '[]',
   employment_types JSONB DEFAULT '[]',
@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS org_settings (
 -- 3. Create Employees table
 CREATE TABLE IF NOT EXISTS employees (
   id TEXT PRIMARY KEY,
-  company_id TEXT REFERENCES companies(id) ON DELETE CASCADE,
+  company_id UUID REFERENCES companies(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   designation TEXT,
   department TEXT,
@@ -49,8 +49,8 @@ CREATE TABLE IF NOT EXISTS employees (
 
 -- 4. Create Leave Requests table
 CREATE TABLE IF NOT EXISTS leave_requests (
-  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-  company_id TEXT REFERENCES companies(id) ON DELETE CASCADE,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id UUID REFERENCES companies(id) ON DELETE CASCADE,
   employee_id TEXT REFERENCES employees(id) ON DELETE CASCADE,
   employee_name TEXT,
   leave_category TEXT,
@@ -65,8 +65,8 @@ CREATE TABLE IF NOT EXISTS leave_requests (
 
 -- 5. Create Mobile Punches table
 CREATE TABLE IF NOT EXISTS mobile_punches (
-  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-  company_id TEXT REFERENCES companies(id) ON DELETE CASCADE,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id UUID REFERENCES companies(id) ON DELETE CASCADE,
   employee_id TEXT REFERENCES employees(id) ON DELETE CASCADE,
   employee_name TEXT,
   type TEXT, -- 'Punch In' or 'Punch Out'
@@ -79,14 +79,25 @@ CREATE TABLE IF NOT EXISTS mobile_punches (
 
 -- 6. Create API Config table
 CREATE TABLE IF NOT EXISTS api_config (
-  company_id TEXT PRIMARY KEY REFERENCES companies(id) ON DELETE CASCADE,
+  company_id UUID PRIMARY KEY REFERENCES companies(id) ON DELETE CASCADE,
   base_url TEXT NOT NULL,
   token TEXT,
   secret_key TEXT,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 7. Security: Enable Row Level Security (RLS)
+-- 7. Create Advance Roster table
+CREATE TABLE IF NOT EXISTS advance_roster (
+  id TEXT PRIMARY KEY,
+  company_id UUID REFERENCES companies(id) ON DELETE CASCADE,
+  employee_id TEXT REFERENCES employees(id) ON DELETE CASCADE,
+  employee_name TEXT,
+  month TEXT NOT NULL,
+  assignments JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 8. Security: Enable Row Level Security (RLS)
 -- If you want to enable security, run these one by one:
 -- ALTER TABLE companies ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE org_settings ENABLE ROW LEVEL SECURITY;
@@ -94,6 +105,7 @@ CREATE TABLE IF NOT EXISTS api_config (
 -- ALTER TABLE leave_requests ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE mobile_punches ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE api_config ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE advance_roster ENABLE ROW LEVEL SECURITY;
 
 -- IMPORTANT: If you enable RLS, you MUST add policies to allow access. 
 -- Since this app doesn't use Supabase Auth yet, you can add "permissive" policies for testing:
@@ -103,3 +115,4 @@ CREATE TABLE IF NOT EXISTS api_config (
 -- CREATE POLICY "public_access" ON employees FOR ALL USING (true);
 -- CREATE POLICY "public_access" ON leave_requests FOR ALL USING (true);
 -- CREATE POLICY "public_access" ON mobile_punches FOR ALL USING (true);
+-- CREATE POLICY "public_access" ON advance_roster FOR ALL USING (true);
