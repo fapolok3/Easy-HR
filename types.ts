@@ -57,7 +57,7 @@ export interface AttendanceRecord {
   date: string;
   checkIn: string;
   checkOut: string | null;
-  status: 'Present' | 'Late' | 'Absent' | 'Half Day' | 'On Time' | 'Holiday' | 'Off Day' | 'Leave';
+  status: 'Present' | 'Late' | 'Absent' | 'Half Day' | 'On Time' | 'Holiday' | 'Off Day' | 'Leave' | '';
   location: string;
   isLate?: boolean;
   isEarlyExit?: boolean;

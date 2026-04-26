@@ -272,15 +272,19 @@ const IndividualAttendanceReport = () => {
                               </div>
                             </td>
                             <td className="p-3 border-r border-border text-center">
-                              <Badge variant={
-                                rec.status === 'Present' || rec.status === 'On Time' ? 'success' :
-                                rec.status === 'Absent' ? 'danger' :
-                                rec.status === 'Late' ? 'warning' : 
-                                rec.status === 'Off Day' ? 'default' :
-                                rec.status === 'Holiday' ? 'warning' : 'default'
-                              }>
-                                {rec.status === 'Leave' ? 'LEAVE' : rec.status}
-                              </Badge>
+                              {rec.status ? (
+                                <Badge variant={
+                                  rec.status === 'Present' || rec.status === 'On Time' ? 'success' :
+                                  rec.status === 'Absent' ? 'danger' :
+                                  rec.status === 'Late' ? 'warning' : 
+                                  rec.status === 'Off Day' ? 'default' :
+                                  rec.status === 'Holiday' ? 'warning' : 'default'
+                                }>
+                                  {rec.status === 'Leave' ? 'LEAVE' : rec.status}
+                                </Badge>
+                              ) : (
+                                <span className="text-textMuted">-</span>
+                              )}
                             </td>
                             <td className="p-3 text-center font-bold text-[#1cbdb0] border-r border-border">
                               {rec.hours !== '-' ? rec.hours : '-'}

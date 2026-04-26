@@ -899,9 +899,28 @@ export const fetchAttendance = async (startDate?: string, endDate?: string): Pro
        });
     }
 
+    // Unified punch collection
+    const punchesByEmpDate = new Map<string, Set<string>>();
+    const mobileKeys = new Set<string>();
+    const deviceKeys = new Set<string>();
+
+    const formatTime = (dateTimeStr: string) => {
+      if (!dateTimeStr) return '-';
+      return dateTimeStr.split(' ')[1] || dateTimeStr;
+    };
+
+    const addPunch = (empId: string, date: string, time: string, isMobile: boolean) => {
+      if (!time || time === '-' || time === '00:00:00' || time === '00:00') return;
+      const key = `${empId}-${date}`;
+      const existing = punchesByEmpDate.get(key) || new Set<string>();
+      existing.add(time);
+      punchesByEmpDate.set(key, existing);
+      if (isMobile) mobileKeys.add(key);
+      else deviceKeys.add(key);
+    };
+
     // Group Mobile Punches by employee and date
     const mobilePunches = await getMobilePunches();
-    const mobilePunchesMap = new Map<string, { in?: string, out?: string }>();
     mobilePunches.forEach(p => {
       // Convert UTC timestamp to local date for Bangladesh/Local reporting
       const timestamp = new Date(p.timestamp);
@@ -909,31 +928,15 @@ export const fetchAttendance = async (startDate?: string, endDate?: string): Pro
       const m = String(timestamp.getMonth() + 1).padStart(2, '0');
       const d = String(timestamp.getDate()).padStart(2, '0');
       const dateKey = `${y}-${m}-${d}`;
-      
-      const key = `${String(p.employeeId)}-${dateKey}`;
-      const existing = mobilePunchesMap.get(key) || {};
       const timeStr = String(timestamp.getHours()).padStart(2, '0') + ':' + String(timestamp.getMinutes()).padStart(2, '0');
-      
-      if (p.type === 'Punch In') {
-        if (!existing.in || timeStr < existing.in) existing.in = timeStr;
-      } else {
-        if (!existing.out || timeStr > existing.out) existing.out = timeStr;
-      }
-      mobilePunchesMap.set(key, existing);
+      addPunch(String(p.employeeId), dateKey, timeStr, true);
     });
-
-    if (mobilePunches.length > 0) {
-      console.log(`fetchAttendance: Found ${mobilePunches.length} total mobile punches. Map size: ${mobilePunchesMap.size}`);
-    }
 
     const holidays = orgSettings.holidays || [];
     const allLeaveRequests = await getLeaveRequests();
     const leaveRequests = allLeaveRequests.filter(r => r.status === 'Approved');
 
     // Group API logs by employee and date
-    const apiLogsMap = new Map<string, any>();
-
-    // Call API for logs ONLY if token exists
     if (config.token) {
       try {
         const endpoint = `/attendance_logs?start=${start}&end=${end}`;
@@ -943,23 +946,19 @@ export const fetchAttendance = async (startDate?: string, endDate?: string): Pro
             if (person.logs) {
               const empId = person.person_identifier || String(person.person_id);
               Object.keys(person.logs).forEach(dateKey => {
-                apiLogsMap.set(`${empId}-${dateKey}`, person.logs[dateKey]);
+                const log = person.logs[dateKey];
+                if (log.start) addPunch(empId, dateKey, formatTime(log.start), false);
+                if (log.end) addPunch(empId, dateKey, formatTime(log.end), false);
               });
             }
           });
         }
       } catch (err) {
-        console.error('fetchAttendance API error (swallowed):', err);
+        console.error('fetchAttendance API error:', err);
       }
     }
 
     const records: AttendanceRecord[] = [];
-
-    // Helper for formatting
-    const formatTime = (dateTimeStr: string) => {
-      if (!dateTimeStr) return '-';
-      return dateTimeStr.split(' ')[1] || dateTimeStr;
-    };
 
     // Generate records for each day in range for every employee
     dates.forEach(date => {
@@ -968,34 +967,37 @@ export const fetchAttendance = async (startDate?: string, endDate?: string): Pro
 
       allEmployees.forEach(emp => {
         const empIdStr = String(emp.id);
-        let log = apiLogsMap.get(`${empIdStr}-${date}`);
-        const mobileLog = mobilePunchesMap.get(`${empIdStr}-${date}`);
-        let source = log ? 'Device Sync' : '-';
+        const empDateKey = `${empIdStr}-${date}`;
+        const punchSet = punchesByEmpDate.get(empDateKey);
+        const punchArray = punchSet ? Array.from(punchSet).sort() : [];
         
-        // If no API log but has mobile punch, create a virtual log
-        if (!log && mobileLog && (mobileLog.in || mobileLog.out)) {
-          let calcHours = '0.00';
-          if (mobileLog.in && mobileLog.out) {
-            const inMins = parseTimeValue(mobileLog.in);
-            const outMins = parseTimeValue(mobileLog.out);
-            if (inMins !== null && outMins !== null) {
-              calcHours = ((outMins - inMins) / 60).toFixed(2);
-            }
+        let checkIn = '-';
+        let checkOut = '-';
+        let hours = '-';
+        let source = '-';
+        
+        if (punchArray.length > 0) {
+          checkIn = punchArray[0];
+          if (punchArray.length > 1) {
+             checkOut = punchArray[punchArray.length - 1];
+             const inMins = parseTimeValue(checkIn);
+             const outMins = parseTimeValue(checkOut);
+             if (inMins !== null && outMins !== null) {
+               hours = ((outMins - inMins) / 60).toFixed(2);
+             }
           }
           
-          log = {
-            start: mobileLog.in ? `${date} ${mobileLog.in}:00` : '',
-            end: mobileLog.out ? `${date} ${mobileLog.out}:00` : '',
-            hours: calcHours,
-            location: 'Mobile'
-          };
-          source = 'Mobile';
+          const hasMobile = mobileKeys.has(empDateKey);
+          const hasDevice = deviceKeys.has(empDateKey);
+          if (hasMobile && hasDevice) source = 'Device + Mobile';
+          else if (hasMobile) source = 'Mobile';
+          else if (hasDevice) source = 'Device Sync';
         }
         
         // Priority for shift: 
         // 1. Advance Roster override
         // 2. Default employee shift
-        const advanceShiftId = advanceAssignmentsMap.get(`${empIdStr}-${date}`);
+        const advanceShiftId = advanceAssignmentsMap.get(empDateKey);
         let shift = getEffectiveShift(emp, date, shifts);
         let isOffDay = shift?.offDays?.includes(dayName);
 
@@ -1016,21 +1018,11 @@ export const fetchAttendance = async (startDate?: string, endDate?: string): Pro
         let isLate = false;
         let isEarlyExit = false;
         let expectedHours = '0.00';
-        let checkIn = '-';
-        let checkOut = '-';
-        let hours = '-';
-
-        // Initialize display values if log exists
-        if (log) {
-          checkIn = formatTime(log.start);
-          checkOut = formatTime(log.end);
-          hours = log.hours || '-';
-        }
 
         if (isGlobalHoliday) {
           status = 'Holiday';
           expectedHours = '0.00';
-          if (log && (log.start || log.end)) {
+          if (punchArray.length > 0) {
             // Worked on holiday
             status = 'Present'; 
           }
@@ -1040,7 +1032,7 @@ export const fetchAttendance = async (startDate?: string, endDate?: string): Pro
         } else if (isOffDay) {
           status = 'Off Day';
           expectedHours = '0.00';
-          if (log && (log.start || log.end)) {
+          if (punchArray.length > 0) {
             // Worked on off day
             status = 'Present';
           }
@@ -1056,7 +1048,7 @@ export const fetchAttendance = async (startDate?: string, endDate?: string): Pro
             expectedHours = '8.00';
           }
 
-          if (log && (log.start || log.end)) {
+          if (punchArray.length > 0) {
             status = 'Present';
 
             if (shift) {
@@ -1080,7 +1072,12 @@ export const fetchAttendance = async (startDate?: string, endDate?: string): Pro
               }
             }
           } else {
-             status = 'Absent';
+             // If no logs and date is in the future, set status to blank instead of Absent
+             if (date > currentDay) {
+               status = '';
+             } else {
+               status = 'Absent';
+             }
           }
         }
 

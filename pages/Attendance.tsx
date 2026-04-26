@@ -292,71 +292,77 @@ const Attendance = () => {
       </div>
 
       {/* Results Table - Scrollable Box */}
-      <Card className="flex-1 overflow-hidden shadow-md border border-border rounded-none relative">
-        <div className="absolute inset-0 overflow-auto">
-          <table className="min-w-full text-left text-[13px] border-separate border-spacing-0">
-            <thead className="bg-[#1cbdb0] text-white font-medium sticky top-0 z-30">
+      <Card className="flex-1 overflow-hidden shadow-xl border border-slate-200 rounded-xl relative min-h-[600px] bg-white">
+        <div className="absolute inset-0 overflow-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
+          <table className="min-w-full text-left text-[11px] border-separate border-spacing-0">
+            <thead className="bg-[#1cbdb0] text-white font-bold sticky top-0 z-30 shadow-sm">
               <tr>
-                <th className="p-3 border-r border-[#15a398] text-center w-12 min-w-[48px] max-w-[48px] sticky left-0 z-40 bg-[#1cbdb0]" rowSpan={2}>SL</th>
-                <th className="p-3 border-r border-[#15a398] text-center w-44 min-w-[176px] max-w-[176px] sticky left-[48px] z-40 bg-[#1cbdb0]" rowSpan={2}>ID</th>
-                <th className="p-3 border-r border-[#15a398] w-[250px] min-w-[250px] max-w-[250px] sticky left-[224px] z-40 bg-[#1cbdb0]" rowSpan={2}>Employee Name</th>
+                <th className="p-2 border-r border-[#15a398] text-center w-10 min-w-[40px] max-w-[40px] sticky left-0 z-40 bg-[#1cbdb0] uppercase text-[9px] tracking-widest" rowSpan={2}>SL</th>
+                <th className="p-2 border-r border-[#15a398] text-center w-36 min-w-[144px] max-w-[144px] sticky left-[40px] z-40 bg-[#1cbdb0] uppercase text-[9px] tracking-widest" rowSpan={2}>ID</th>
+                <th className="p-2 border-r border-[#15a398] w-[220px] min-w-[220px] max-w-[220px] sticky left-[184px] z-40 bg-[#1cbdb0] uppercase text-[9px] tracking-widest" rowSpan={2}>Profile</th>
                 {uniqueDates.map(date => (
-                  <th key={date} colSpan={3} className="p-2 border-r border-[#15a398] text-center border-b border-[#15a398]">
+                  <th key={date} colSpan={3} className="p-1.5 border-r border-[#15a398] text-center border-b border-[#15a398] text-[10px] uppercase tracking-wider font-extrabold bg-[#18a89c]">
                     {formatDateLabel(date)}
                   </th>
                 ))}
               </tr>
-              <tr className="bg-[#1cbdb0]/90 text-[11px] uppercase tracking-wider sticky top-[41px] z-30">
+              <tr className="bg-[#15948a] text-[8px] uppercase tracking-widest sticky top-[33px] z-30 font-black">
                 {uniqueDates.map(date => (
                   <React.Fragment key={`${date}-sub`}>
-                    <th className="px-2 py-1.5 border-r border-[#15a398] text-center font-bold">Entry</th>
-                    <th className="px-2 py-1.5 border-r border-[#15a398] text-center font-bold">Exit</th>
-                    <th className="px-2 py-1.5 border-r border-[#15a398] text-center font-bold">Hours</th>
+                    <th className="px-2 py-1 border-r border-[#15a398] text-center">In</th>
+                    <th className="px-2 py-1 border-r border-[#15a398] text-center">Out</th>
+                    <th className="px-2 py-1 border-r border-[#15a398] text-center">Hrs</th>
                   </React.Fragment>
                 ))}
               </tr>
             </thead>
-            <tbody className="bg-white">
+            <tbody className="bg-white divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={3 + (uniqueDates.length * 3)} className="p-12 text-center text-textMuted italic">
-                    Loading detailed report...
+                  <td colSpan={3 + (uniqueDates.length * 3)} className="p-24 text-center">
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin"></div>
+                      <p className="text-[10px] font-bold text-textMuted uppercase tracking-widest">Loading...</p>
+                    </div>
                   </td>
                 </tr>
               ) : filteredEmployees.length === 0 ? (
                 <tr>
-                  <td colSpan={3 + (uniqueDates.length * 3)} className="p-12 text-center text-textMuted">
-                    No matching records found.
+                  <td colSpan={3 + (uniqueDates.length * 3)} className="p-24 text-center">
+                    <div className="flex flex-col items-center gap-1 opacity-40">
+                      <IconSearch className="w-8 h-8 text-slate-300" />
+                      <p className="text-sm font-black text-text uppercase tracking-tight">No match</p>
+                    </div>
                   </td>
                 </tr>
               ) : (
                 filteredEmployees.map((emp, index) => (
-                  <tr key={emp.id} className="border-b border-border hover:bg-slate-50 transition-colors group">
-                    <td className="p-3 border-r border-border text-center text-textMuted sticky left-0 z-20 bg-white group-hover:bg-slate-50 w-12 min-w-[48px] max-w-[48px]">
-                      {index + 1}
+                  <tr key={emp.id} className="group hover:bg-slate-50/80 transition-all duration-200">
+                    <td className="p-2 border-r border-slate-100 text-center font-mono text-[10px] text-textMuted sticky left-0 z-20 bg-white group-hover:bg-slate-50 transition-colors w-10 min-w-[40px] max-w-[40px]">
+                      {(index + 1).toString().padStart(2, '0')}
                     </td>
-                    <td className="p-2 border-r border-border text-center text-textMuted font-medium sticky left-[48px] z-20 bg-white group-hover:bg-slate-50 w-44 min-w-[176px] max-w-[176px]">
-                      <div className="bg-slate-50 border border-slate-200 rounded px-2 py-1 inline-block min-w-[120px] text-[11px]">
+                    <td className="p-2 border-r border-slate-100 text-center sticky left-[40px] z-20 bg-white group-hover:bg-slate-50 transition-colors w-36 min-w-[144px] max-w-[144px]">
+                      <div className="bg-slate-100/80 border border-slate-200 rounded-md px-2 py-0.5 inline-flex items-center justify-center min-w-[110px] text-[10px] font-black text-slate-600 uppercase tracking-tight">
                         {emp.id}
                       </div>
                     </td>
-                    <td className="p-2 border-r border-border sticky left-[224px] z-20 bg-white group-hover:bg-slate-50 w-[250px] min-w-[250px] max-w-[250px]">
+                    <td className="p-1 border-r border-slate-100 sticky left-[184px] z-20 bg-white group-hover:bg-slate-50 transition-colors w-[220px] min-w-[220px] max-w-[220px]">
                       <div 
-                        className="flex items-center gap-3 p-1.5 rounded-lg bg-surfaceHighlight/50 border border-border/50 cursor-pointer hover:border-primary hover:bg-primary/5 transition-all"
+                        className="flex items-center gap-2 p-1 rounded-lg bg-slate-50/50 border border-slate-100 cursor-pointer group/item hover:border-primary/30 hover:bg-white hover:shadow-sm transition-all"
                         onClick={() => navigate(`/employees/${emp.id}`)}
                       >
-                         <div className="w-10 h-10 rounded-full bg-white border border-slate-200 shadow-sm overflow-hidden flex-shrink-0">
+                         <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 shadow-sm overflow-hidden flex-shrink-0 flex items-center justify-center p-0.5">
                            {emp.avatar ? (
-                             <img src={emp.avatar} alt={emp.name} className="w-full h-full object-cover" />
+                             <img src={emp.avatar} alt={emp.name} className="w-full h-full object-cover rounded-md" />
                            ) : (
-                             <div className="w-full h-full flex items-center justify-center text-slate-400 font-bold">
+                             <div className="w-full h-full flex items-center justify-center text-primary font-black text-sm bg-primary/5 rounded-md">
                                {emp.name.charAt(0)}
                              </div>
                            )}
                          </div>
-                         <div className="flex flex-col overflow-hidden">
-                            <span className="font-bold text-[#1cbdb0] leading-tight truncate">{emp.name}</span>
-                            <span className="text-[11px] text-textMuted truncate">{emp.designation}</span>
+                         <div className="flex flex-col min-w-0">
+                            <span className="font-black text-slate-800 text-[11px] leading-tight truncate group-hover/item:text-primary transition-colors uppercase tracking-tight">{emp.name}</span>
+                            <span className="text-[9px] text-textMuted font-bold uppercase truncate tracking-tighter opacity-70">{emp.designation}</span>
                          </div>
                       </div>
                     </td>
@@ -373,43 +379,39 @@ const Attendance = () => {
                         
                         return (
                           <React.Fragment key={`${emp.id}-${date}`}>
-                            <td className="p-1 border-r border-border align-middle min-w-[70px]">
-                               <div className={`p-1.5 rounded border flex flex-col items-center justify-center min-h-[40px] w-full shadow-sm transition-all ${isAbsent && !isHoliday && !isOffDayStatus && !isLeave ? 'bg-red-50 border-red-100' : (isHoliday && isAbsent) || isOffDayStatus || isLeave ? 'bg-slate-50 border-border' : isLate ? 'bg-red-50 border-red-200' : workedOnHoliday ? 'bg-amber-50 border-amber-100' : workedOnOffDay ? 'bg-blue-50 border-blue-100' : 'bg-emerald-50 border-emerald-100'}`}>
+                             <td className="p-0.5 border-r border-slate-100 align-middle min-w-[55px]">
+                               <div className={`p-1 rounded-md border flex flex-col items-center justify-center min-h-[30px] w-full shadow-sm transition-all ${isAbsent && !isHoliday && !isOffDayStatus && !isLeave ? 'bg-red-50 border-red-100' : (isHoliday && isAbsent) || isOffDayStatus || isLeave ? 'bg-slate-50 border-border' : isLate ? 'bg-red-50 border-red-200' : workedOnHoliday ? 'bg-amber-50 border-amber-100' : workedOnOffDay ? 'bg-blue-50 border-blue-100' : 'bg-emerald-50 border-emerald-100'}`}>
                                   {isHoliday && isAbsent ? (
-                                    <span className="text-primary font-bold uppercase text-[8px]">Holiday</span>
+                                    <span className="text-primary font-bold uppercase text-[7px]">Hol</span>
                                   ) : isOffDayStatus ? (
-                                    <span className="text-textMuted font-bold uppercase text-[8px]">Off Day</span>
+                                    <span className="text-textMuted font-bold uppercase text-[7px]">Off</span>
                                   ) : isLeave ? (
-                                    <span className="text-accent font-bold uppercase text-[7px]">LEAVE</span>
+                                    <span className="text-accent font-bold uppercase text-[7px]">LV</span>
                                   ) : isAbsent ? (
-                                    <span className="text-red-500 font-bold uppercase text-[9px]">Absent</span>
+                                    <span className="text-red-500 font-bold uppercase text-[8px]">Abs</span>
                                   ) : (
                                     <div className="flex flex-col items-center">
                                        <div className="flex items-center gap-1">
-                                          <span className={`${isLate ? 'text-red-600' : workedOnHoliday ? 'text-amber-700' : workedOnOffDay ? 'text-blue-600' : 'text-emerald-700'} font-bold text-[10px]`}>{formatTimeTo12Hour(rec.checkIn)}</span>
-                                          {isLate && <span className="text-[10px] font-black text-red-600"> (L)</span>}
-                                          {workedOnHoliday && <span className="text-[10px] font-black text-amber-600"> (H)</span>}
-                                          {workedOnOffDay && <span className="text-[10px] font-black text-blue-600">(OF)</span>}
+                                          <span className={`${isLate ? 'text-red-600' : workedOnHoliday ? 'text-amber-700' : workedOnOffDay ? 'text-blue-600' : 'text-emerald-700'} font-bold text-[9px]`}>{formatTimeTo12Hour(rec.checkIn)}</span>
+                                          {isLate && <span className="text-[9px] font-black text-red-600"> (L)</span>}
                                        </div>
                                     </div>
                                   )}
                                </div>
                             </td>
-                            <td className="p-1 border-r border-border align-middle min-w-[70px]">
-                               <div className={`p-1.5 rounded border flex items-center justify-center min-h-[40px] w-full shadow-sm transition-all ${isEarlyExit ? 'bg-red-50 border-red-200' : (isHoliday && isAbsent) || isOffDayStatus || isLeave ? 'bg-slate-50 border-border' : workedOnHoliday ? 'bg-amber-50 border-amber-100' : workedOnOffDay ? 'bg-blue-50 border-blue-100' : 'bg-slate-50 border-slate-100'}`}>
+                            <td className="p-0.5 border-r border-slate-100 align-middle min-w-[55px]">
+                               <div className={`p-1 rounded-md border flex items-center justify-center min-h-[30px] w-full shadow-sm transition-all ${isEarlyExit ? 'bg-red-50 border-red-200' : (isHoliday && isAbsent) || isOffDayStatus || isLeave ? 'bg-slate-50 border-border' : workedOnHoliday ? 'bg-amber-50 border-amber-100' : workedOnOffDay ? 'bg-blue-50 border-blue-100' : 'bg-slate-50 border-slate-100'}`}>
                                   <div className="flex items-center gap-1">
-                                    <span className={`${isEarlyExit ? 'text-red-600' : workedOnHoliday ? 'text-amber-700' : workedOnOffDay ? 'text-blue-600' : 'text-text'} font-medium text-[10px]`}>
+                                    <span className={`${isEarlyExit ? 'text-red-600' : workedOnHoliday ? 'text-amber-700' : workedOnOffDay ? 'text-blue-600' : 'text-text'} font-medium text-[9px]`}>
                                       {rec?.checkOut && rec.checkOut !== '-' ? formatTimeTo12Hour(rec.checkOut) : '-'}
                                     </span>
-                                    {isEarlyExit && <span className="text-[10px] font-black text-red-600">EL</span>}
-                                    {workedOnHoliday && rec?.checkOut && rec.checkOut !== '-' && <span className="text-[10px] font-black text-amber-600"> (H)</span>}
-                                    {workedOnOffDay && rec?.checkOut && rec.checkOut !== '-' && <span className="text-[10px] font-black text-blue-600">(OF)</span>}
+                                    {isEarlyExit && <span className="text-[9px] font-black text-red-600">EL</span>}
                                   </div>
                                </div>
                             </td>
-                           <td className="p-1 border-r border-border align-middle min-w-[70px]">
-                              <div className="p-1.5 rounded border border-slate-100 bg-slate-50 flex items-center justify-center min-h-[40px] w-full shadow-sm">
-                                 <span className="text-[#1cbdb0] font-bold text-[10px]">
+                           <td className="p-0.5 border-r border-slate-100 align-middle min-w-[55px]">
+                              <div className="p-1 rounded-md border border-slate-100 bg-slate-50 flex items-center justify-center min-h-[30px] w-full shadow-sm">
+                                 <span className="text-[#1cbdb0] font-bold text-[9px]">
                                    {rec?.hours && rec.hours !== '-' ? rec.hours : '-'}
                                  </span>
                               </div>
