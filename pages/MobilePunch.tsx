@@ -182,7 +182,7 @@ const MobilePunch = () => {
         <div className="w-9" /> {/* Spacer */}
       </header>
 
-      <div className="p-3 md:p-6 max-w-[317px] mx-auto w-full space-y-4">
+      <div className="p-3 md:p-6 max-w-[315px] mx-auto w-full space-y-4">
         {/* Employee Selection */}
         {!session?.isEmployee && (
           <Card className="p-3">

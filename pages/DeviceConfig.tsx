@@ -29,6 +29,7 @@ const DeviceConfig = () => {
   const [isEnrollmentModalOpen, setIsEnrollmentModalOpen] = useState(false);
   const [enrollmentStatus, setEnrollmentStatus] = useState<EnrollmentStatus | null>(null);
   const [enrollmentForm, setEnrollmentForm] = useState({ hand: 'right', finger: 'index' });
+  const [isStartingEnrollment, setIsStartingEnrollment] = useState(false);
   const [processing, setProcessing] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'danger', visible: boolean }>({
     message: '',
@@ -120,26 +121,59 @@ const DeviceConfig = () => {
   };
 
   const handleStartEnrollment = async () => {
-    if (!selectedEmployee || !device) return;
+    if (!selectedEmployee || !device || isStartingEnrollment) return;
+    setIsStartingEnrollment(true);
+    setEnrollmentStatus(null);
     try {
       await startEnrollment(String(device.identifier), selectedEmployee.id, enrollmentForm.hand, enrollmentForm.finger);
       setIsEnrollmentModalOpen(true);
-      checkEnrollmentStatus();
+      checkEnrollmentStatus(0, true);
     } catch (err) {
       alert('Failed to start enrollment.');
+    } finally {
+      setIsStartingEnrollment(false);
     }
   };
 
-  const checkEnrollmentStatus = async () => {
+  const checkEnrollmentStatus = async (retryCount = 0, initial = false) => {
     if (!selectedEmployee || !device) return;
+    
+    // Stop polling if modal is closed (except for the initial call)
+    if (!initial && !isEnrollmentModalOpen) return;
+
     try {
       const status = await getEnrollmentStatus(String(device.id), selectedEmployee.id);
       setEnrollmentStatus(status);
+      
       if (status.running) {
-        setTimeout(checkEnrollmentStatus, 3000);
+        // Poll every 3 seconds while running
+        setTimeout(() => checkEnrollmentStatus(retryCount + 1), 3000);
+      } else {
+        // Not running anymore - check if successful
+        if (status.status) {
+          setToast({
+            message: 'Enrollment completed successfully!',
+            type: 'success',
+            visible: true
+          });
+          // Automatically refresh fingerprints list
+          const data = await getFingerprints(selectedEmployee.id);
+          setFingerprints(data);
+        } else if (retryCount > 0) {
+          // Only show error if it was previously running or it's been a few retries
+          setToast({
+            message: 'Enrollment failed or timed out.',
+            type: 'danger',
+            visible: true
+          });
+        }
       }
     } catch (err) {
-      console.error(err);
+      console.error('Error checking enrollment status:', err);
+      // Retry after delay on error
+      if (retryCount < 20) { // Limit retries on actual API error
+        setTimeout(() => checkEnrollmentStatus(retryCount + 1), 5000);
+      }
     }
   };
 
@@ -354,7 +388,12 @@ const DeviceConfig = () => {
                    </select>
                 </div>
              </div>
-             <Button className="w-full gap-2" onClick={handleStartEnrollment}>
+             <Button 
+               className="w-full gap-2" 
+               onClick={handleStartEnrollment}
+               isLoading={isStartingEnrollment}
+               disabled={isStartingEnrollment}
+             >
                 <IconPlus className="w-4 h-4" /> Start Enrollment
              </Button>
           </div>
@@ -364,27 +403,79 @@ const DeviceConfig = () => {
       {/* Enrollment Progress Modal */}
       <Modal 
         isOpen={isEnrollmentModalOpen} 
-        onClose={() => {}} 
-        title="Enrollment in Progress"
+        onClose={() => {
+          if (enrollmentStatus && !enrollmentStatus.running) {
+            setIsEnrollmentModalOpen(false);
+          }
+        }} 
+        title={enrollmentStatus?.running ? "Enrollment in Progress" : "Enrollment Result"}
       >
         <div className="text-center py-6 space-y-4">
           <div className="relative inline-block">
-            <div className="w-20 h-20 rounded-full border-4 border-primary/20 border-t-primary animate-spin"></div>
-            <IconFingerprint className="absolute inset-0 m-auto w-8 h-8 text-primary" />
-          </div>
-          <div>
-            <h3 className="font-bold text-lg text-text">Waiting for Fingerprint</h3>
-            <p className="text-sm text-textMuted px-8">Please place the {enrollmentForm.hand} {enrollmentForm.finger} on the device reader.</p>
-          </div>
-          
-          <div className="bg-surfaceHighlight p-4 rounded-xl border border-border flex items-center gap-3 text-left">
-            <IconAlertCircle className="w-5 h-5 text-primary flex-shrink-0" />
-            <p className="text-xs text-textMuted">This process will timeout in 10 minutes. Please complete the print scan quickly.</p>
+            {enrollmentStatus?.running ? (
+              <>
+                <div className="w-20 h-20 rounded-full border-4 border-primary/20 border-t-primary animate-spin"></div>
+                <IconFingerprint className="absolute inset-0 m-auto w-8 h-8 text-primary" />
+              </>
+            ) : enrollmentStatus?.status ? (
+              <div className="w-20 h-20 rounded-full bg-success/10 flex items-center justify-center">
+                <IconCheckCircle className="w-10 h-10 text-success" />
+              </div>
+            ) : (
+              <div className="w-20 h-20 rounded-full bg-danger/10 flex items-center justify-center">
+                <IconX className="w-10 h-10 text-danger" />
+              </div>
+            )}
           </div>
 
-          <Button variant="danger" className="w-full" onClick={handleStopEnrollment}>
-            Cancel Enrollment
-          </Button>
+          <div>
+            <h3 className="font-bold text-lg text-text">
+              {enrollmentStatus?.running 
+                ? "Waiting for Fingerprint" 
+                : enrollmentStatus?.status 
+                  ? "Enrollment Success" 
+                  : "Enrollment Failed"}
+            </h3>
+            <p className="text-sm text-textMuted px-8">
+              {enrollmentStatus?.running 
+                ? `Please place the ${enrollmentForm.hand} ${enrollmentForm.finger} on the device reader.`
+                : enrollmentStatus?.status
+                  ? `Successfully enrolled ${selectedEmployee?.name}'s ${enrollmentForm.hand} ${enrollmentForm.finger}.`
+                  : "The device could not complete the enrollment. Please try again."}
+            </p>
+          </div>
+
+          {enrollmentStatus?.running && enrollmentStatus.from && enrollmentStatus.to && (
+            <div className="space-y-1 px-8">
+              <div className="flex justify-between text-[10px] font-bold text-textMuted uppercase">
+                <span>Progress</span>
+                <span>{enrollmentStatus.from} / {enrollmentStatus.to}</span>
+              </div>
+              <div className="w-full bg-surfaceHighlight h-2 rounded-full overflow-hidden">
+                <div 
+                  className="bg-primary h-full transition-all duration-500" 
+                  style={{ width: `${(parseInt(enrollmentStatus.from) / parseInt(enrollmentStatus.to)) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+          )}
+          
+          {enrollmentStatus?.running && (
+            <div className="bg-surfaceHighlight p-4 rounded-xl border border-border flex items-center gap-3 text-left">
+              <IconAlertCircle className="w-5 h-5 text-primary flex-shrink-0" />
+              <p className="text-xs text-textMuted">This process will timeout if not completed quickly. Please follow device instructions.</p>
+            </div>
+          )}
+
+          {enrollmentStatus?.running ? (
+            <Button variant="danger" className="w-full" onClick={handleStopEnrollment}>
+              Cancel Enrollment
+            </Button>
+          ) : (
+            <Button variant="primary" className="w-full" onClick={() => setIsEnrollmentModalOpen(false)}>
+              Close
+            </Button>
+          )}
         </div>
       </Modal>
     </div>
