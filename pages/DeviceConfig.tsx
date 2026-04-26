@@ -143,35 +143,42 @@ const DeviceConfig = () => {
 
     try {
       const status = await getEnrollmentStatus(String(device.id), selectedEmployee.id);
-      setEnrollmentStatus(status);
       
+      // If we just started, it might not be 'running' yet.
+      // We give it up to 5 retries (approx 15 seconds) to enter 'running' state.
       if (status.running) {
-        // Poll every 3 seconds while running
+        setEnrollmentStatus(status);
         setTimeout(() => checkEnrollmentStatus(retryCount + 1), 3000);
+      } else if (status.status) {
+        // Successful completion!
+        setEnrollmentStatus(status);
+        setToast({
+          message: 'Enrollment completed successfully!',
+          type: 'success',
+          visible: true
+        });
+        const data = await getFingerprints(selectedEmployee.id);
+        setFingerprints(data);
       } else {
-        // Not running anymore - check if successful
-        if (status.status) {
-          setToast({
-            message: 'Enrollment completed successfully!',
-            type: 'success',
-            visible: true
-          });
-          // Automatically refresh fingerprints list
-          const data = await getFingerprints(selectedEmployee.id);
-          setFingerprints(data);
-        } else if (retryCount > 0) {
-          // Only show error if it was previously running or it's been a few retries
-          setToast({
-            message: 'Enrollment failed or timed out.',
-            type: 'danger',
-            visible: true
-          });
+        // Not running and not successful.
+        if (retryCount < 5) {
+          // Keep polling for a bit even if not running yet (initialization phase)
+          setTimeout(() => checkEnrollmentStatus(retryCount + 1), 3000);
+        } else {
+          // Truly failed after grace period
+          setEnrollmentStatus(status);
+          if (retryCount > 0) {
+            setToast({
+              message: 'Enrollment failed or timed out.',
+              type: 'danger',
+              visible: true
+            });
+          }
         }
       }
     } catch (err) {
       console.error('Error checking enrollment status:', err);
-      // Retry after delay on error
-      if (retryCount < 20) { // Limit retries on actual API error
+      if (retryCount < 20) {
         setTimeout(() => checkEnrollmentStatus(retryCount + 1), 5000);
       }
     }
@@ -408,16 +415,16 @@ const DeviceConfig = () => {
             setIsEnrollmentModalOpen(false);
           }
         }} 
-        title={enrollmentStatus?.running ? "Enrollment in Progress" : "Enrollment Result"}
+        title={!enrollmentStatus ? "Initialising Enrollment" : enrollmentStatus.running ? "Enrollment in Progress" : "Enrollment Result"}
       >
         <div className="text-center py-6 space-y-4">
           <div className="relative inline-block">
-            {enrollmentStatus?.running ? (
+            {!enrollmentStatus || enrollmentStatus.running ? (
               <>
                 <div className="w-20 h-20 rounded-full border-4 border-primary/20 border-t-primary animate-spin"></div>
                 <IconFingerprint className="absolute inset-0 m-auto w-8 h-8 text-primary" />
               </>
-            ) : enrollmentStatus?.status ? (
+            ) : enrollmentStatus.status ? (
               <div className="w-20 h-20 rounded-full bg-success/10 flex items-center justify-center">
                 <IconCheckCircle className="w-10 h-10 text-success" />
               </div>
@@ -430,18 +437,22 @@ const DeviceConfig = () => {
 
           <div>
             <h3 className="font-bold text-lg text-text">
-              {enrollmentStatus?.running 
-                ? "Waiting for Fingerprint" 
-                : enrollmentStatus?.status 
-                  ? "Enrollment Success" 
-                  : "Enrollment Failed"}
+              {!enrollmentStatus 
+                ? "Connecting to Device" 
+                : enrollmentStatus.running 
+                  ? "Waiting for Fingerprint" 
+                  : enrollmentStatus.status 
+                    ? "Enrollment Success" 
+                    : "Enrollment Failed"}
             </h3>
             <p className="text-sm text-textMuted px-8">
-              {enrollmentStatus?.running 
-                ? `Please place the ${enrollmentForm.hand} ${enrollmentForm.finger} on the device reader.`
-                : enrollmentStatus?.status
-                  ? `Successfully enrolled ${selectedEmployee?.name}'s ${enrollmentForm.hand} ${enrollmentForm.finger}.`
-                  : "The device could not complete the enrollment. Please try again."}
+              {!enrollmentStatus
+                ? "Sending command to device. Please wait..."
+                : enrollmentStatus.running 
+                  ? `Please place the ${enrollmentForm.hand} ${enrollmentForm.finger} on the device reader.`
+                  : enrollmentStatus.status
+                    ? `Successfully enrolled ${selectedEmployee?.name}'s ${enrollmentForm.hand} ${enrollmentForm.finger}.`
+                    : "The device could not complete the enrollment. Please try again."}
             </p>
           </div>
 
