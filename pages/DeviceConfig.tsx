@@ -29,7 +29,6 @@ const DeviceConfig = () => {
   const [isEnrollmentModalOpen, setIsEnrollmentModalOpen] = useState(false);
   const [enrollmentStatus, setEnrollmentStatus] = useState<EnrollmentStatus | null>(null);
   const [enrollmentForm, setEnrollmentForm] = useState({ hand: 'right', finger: 'index' });
-  const [isStartingEnrollment, setIsStartingEnrollment] = useState(false);
   const [processing, setProcessing] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'danger', visible: boolean }>({
     message: '',
@@ -121,66 +120,26 @@ const DeviceConfig = () => {
   };
 
   const handleStartEnrollment = async () => {
-    if (!selectedEmployee || !device || isStartingEnrollment) return;
-    setIsStartingEnrollment(true);
-    setEnrollmentStatus(null);
+    if (!selectedEmployee || !device) return;
     try {
       await startEnrollment(String(device.identifier), selectedEmployee.id, enrollmentForm.hand, enrollmentForm.finger);
       setIsEnrollmentModalOpen(true);
-      checkEnrollmentStatus(0, true);
+      checkEnrollmentStatus();
     } catch (err) {
       alert('Failed to start enrollment.');
-    } finally {
-      setIsStartingEnrollment(false);
     }
   };
 
-  const checkEnrollmentStatus = async (retryCount = 0, initial = false) => {
+  const checkEnrollmentStatus = async () => {
     if (!selectedEmployee || !device) return;
-    
-    // Stop polling if modal is closed (except for the initial call)
-    if (!initial && !isEnrollmentModalOpen) return;
-
     try {
       const status = await getEnrollmentStatus(String(device.id), selectedEmployee.id);
-      
-      // If we just started, it might not be 'running' yet.
-      // We give it up to 5 retries (approx 15 seconds) to enter 'running' state.
+      setEnrollmentStatus(status);
       if (status.running) {
-        setEnrollmentStatus(status);
-        setTimeout(() => checkEnrollmentStatus(retryCount + 1), 3000);
-      } else if (status.status) {
-        // Successful completion!
-        setEnrollmentStatus(status);
-        setToast({
-          message: 'Enrollment completed successfully!',
-          type: 'success',
-          visible: true
-        });
-        const data = await getFingerprints(selectedEmployee.id);
-        setFingerprints(data);
-      } else {
-        // Not running and not successful.
-        if (retryCount < 5) {
-          // Keep polling for a bit even if not running yet (initialization phase)
-          setTimeout(() => checkEnrollmentStatus(retryCount + 1), 3000);
-        } else {
-          // Truly failed after grace period
-          setEnrollmentStatus(status);
-          if (retryCount > 0) {
-            setToast({
-              message: 'Enrollment failed or timed out.',
-              type: 'danger',
-              visible: true
-            });
-          }
-        }
+        setTimeout(checkEnrollmentStatus, 3000);
       }
     } catch (err) {
-      console.error('Error checking enrollment status:', err);
-      if (retryCount < 20) {
-        setTimeout(() => checkEnrollmentStatus(retryCount + 1), 5000);
-      }
+      console.error(err);
     }
   };
 
@@ -395,12 +354,7 @@ const DeviceConfig = () => {
                    </select>
                 </div>
              </div>
-             <Button 
-               className="w-full gap-2" 
-               onClick={handleStartEnrollment}
-               isLoading={isStartingEnrollment}
-               disabled={isStartingEnrollment}
-             >
+             <Button className="w-full gap-2" onClick={handleStartEnrollment}>
                 <IconPlus className="w-4 h-4" /> Start Enrollment
              </Button>
           </div>
@@ -410,83 +364,27 @@ const DeviceConfig = () => {
       {/* Enrollment Progress Modal */}
       <Modal 
         isOpen={isEnrollmentModalOpen} 
-        onClose={() => {
-          if (enrollmentStatus && !enrollmentStatus.running) {
-            setIsEnrollmentModalOpen(false);
-          }
-        }} 
-        title={!enrollmentStatus ? "Initialising Enrollment" : enrollmentStatus.running ? "Enrollment in Progress" : "Enrollment Result"}
+        onClose={() => {}} 
+        title="Enrollment in Progress"
       >
         <div className="text-center py-6 space-y-4">
           <div className="relative inline-block">
-            {!enrollmentStatus || enrollmentStatus.running ? (
-              <>
-                <div className="w-20 h-20 rounded-full border-4 border-primary/20 border-t-primary animate-spin"></div>
-                <IconFingerprint className="absolute inset-0 m-auto w-8 h-8 text-primary" />
-              </>
-            ) : enrollmentStatus.status ? (
-              <div className="w-20 h-20 rounded-full bg-success/10 flex items-center justify-center">
-                <IconCheckCircle className="w-10 h-10 text-success" />
-              </div>
-            ) : (
-              <div className="w-20 h-20 rounded-full bg-danger/10 flex items-center justify-center">
-                <IconX className="w-10 h-10 text-danger" />
-              </div>
-            )}
+            <div className="w-20 h-20 rounded-full border-4 border-primary/20 border-t-primary animate-spin"></div>
+            <IconFingerprint className="absolute inset-0 m-auto w-8 h-8 text-primary" />
           </div>
-
           <div>
-            <h3 className="font-bold text-lg text-text">
-              {!enrollmentStatus 
-                ? "Connecting to Device" 
-                : enrollmentStatus.running 
-                  ? "Waiting for Fingerprint" 
-                  : enrollmentStatus.status 
-                    ? "Enrollment Success" 
-                    : "Enrollment Failed"}
-            </h3>
-            <p className="text-sm text-textMuted px-8">
-              {!enrollmentStatus
-                ? "Sending command to device. Please wait..."
-                : enrollmentStatus.running 
-                  ? `Please place the ${enrollmentForm.hand} ${enrollmentForm.finger} on the device reader.`
-                  : enrollmentStatus.status
-                    ? `Successfully enrolled ${selectedEmployee?.name}'s ${enrollmentForm.hand} ${enrollmentForm.finger}.`
-                    : "The device could not complete the enrollment. Please try again."}
-            </p>
+            <h3 className="font-bold text-lg text-text">Waiting for Fingerprint</h3>
+            <p className="text-sm text-textMuted px-8">Please place the {enrollmentForm.hand} {enrollmentForm.finger} on the device reader.</p>
+          </div>
+          
+          <div className="bg-surfaceHighlight p-4 rounded-xl border border-border flex items-center gap-3 text-left">
+            <IconAlertCircle className="w-5 h-5 text-primary flex-shrink-0" />
+            <p className="text-xs text-textMuted">This process will timeout in 10 minutes. Please complete the print scan quickly.</p>
           </div>
 
-          {enrollmentStatus?.running && enrollmentStatus.from && enrollmentStatus.to && (
-            <div className="space-y-1 px-8">
-              <div className="flex justify-between text-[10px] font-bold text-textMuted uppercase">
-                <span>Progress</span>
-                <span>{enrollmentStatus.from} / {enrollmentStatus.to}</span>
-              </div>
-              <div className="w-full bg-surfaceHighlight h-2 rounded-full overflow-hidden">
-                <div 
-                  className="bg-primary h-full transition-all duration-500" 
-                  style={{ width: `${(parseInt(enrollmentStatus.from) / parseInt(enrollmentStatus.to)) * 100}%` }}
-                ></div>
-              </div>
-            </div>
-          )}
-          
-          {enrollmentStatus?.running && (
-            <div className="bg-surfaceHighlight p-4 rounded-xl border border-border flex items-center gap-3 text-left">
-              <IconAlertCircle className="w-5 h-5 text-primary flex-shrink-0" />
-              <p className="text-xs text-textMuted">This process will timeout if not completed quickly. Please follow device instructions.</p>
-            </div>
-          )}
-
-          {enrollmentStatus?.running ? (
-            <Button variant="danger" className="w-full" onClick={handleStopEnrollment}>
-              Cancel Enrollment
-            </Button>
-          ) : (
-            <Button variant="primary" className="w-full" onClick={() => setIsEnrollmentModalOpen(false)}>
-              Close
-            </Button>
-          )}
+          <Button variant="danger" className="w-full" onClick={handleStopEnrollment}>
+            Cancel Enrollment
+          </Button>
         </div>
       </Modal>
     </div>

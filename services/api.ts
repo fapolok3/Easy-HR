@@ -1301,12 +1301,7 @@ export const getEnrollmentStatus = async (deviceId: string, personId: string): P
       headers: { 'Accept': 'application/json' }
     });
 
-    const data = await response.json();
-    return {
-      ...data,
-      running: data.running === true || data.running === 1 || data.running === '1' || String(data.running).toLowerCase() === 'true',
-      status: data.status === true || data.status === 1 || data.status === '1' || String(data.status).toLowerCase() === 'true'
-    };
+    return await response.json();
   } catch (err) {
     console.error('Error getting enrollment status:', err);
     throw err;
