@@ -334,6 +334,65 @@ export const saveApiConfig = async (config: ApiConfig) => {
   }
 };
 
+// --- STORAGE HELPERS ---
+export const uploadEmployeeAvatar = async (file: File, employeeId: string): Promise<string | null> => {
+  try {
+    if (!checkSupabase()) return null;
+    
+    // File validation
+    const MAX_SIZE = 2 * 1024 * 1024; // 2MB
+    if (file.size > MAX_SIZE) {
+      throw new Error('File size exceeds 2MB limit.');
+    }
+    
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      throw new Error('Unsupported file format. Please use JPG, PNG, or WEBP.');
+    }
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${employeeId}-${Date.now()}.${fileExt}`;
+    const filePath = `avatars/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, file);
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(filePath);
+
+    return publicUrl;
+  } catch (err: any) {
+    console.error('Error uploading avatar:', err);
+    throw err;
+  }
+};
+
+export const deleteEmployeeAvatar = async (url: string) => {
+  try {
+    if (!checkSupabase()) return;
+    
+    // Extract path from public URL
+    // Format: .../storage/v1/object/public/avatars/avatars/filename
+    // Or simpler if we know the structure
+    const pathParts = url.split('/');
+    const fileName = pathParts[pathParts.length - 1];
+    
+    const { error } = await supabase.storage
+      .from('avatars')
+      .remove([`avatars/${fileName}`]);
+      
+    if (error) console.error('Error deleting avatar from storage:', error);
+  } catch (err) {
+    console.error('deleteEmployeeAvatar exception:', err);
+  }
+};
+
 // --- EMPLOYEE PERSISTENCE ---
 export const getEmployeeByCredentials = async (emailPhone: string, password: string): Promise<Employee | null> => {
   try {
@@ -369,7 +428,7 @@ export const getEmployeeByCredentials = async (emailPhone: string, password: str
       endDate: data.end_date,
       email: data.email,
       phone: data.phone,
-      avatar: data.avatar,
+      avatarUrl: data.avatar_url,
       zkDeviceId: data.zk_device_id,
       shift: data.shift,
       shiftEffectiveDate: data.shift_effective_date,
@@ -439,7 +498,7 @@ export const getLocalEmployees = async (): Promise<Employee[]> => {
         endDate: item.end_date,
         email: item.email,
         phone: item.phone,
-        avatar: item.avatar,
+        avatarUrl: item.avatar_url,
         zkDeviceId: item.zk_device_id,
         shift: item.shift,
         shiftEffectiveDate: item.shift_effective_date,
@@ -478,7 +537,7 @@ export const saveLocalEmployee = async (employee: Employee) => {
       end_date: employee.endDate,
       email: employee.email,
       phone: employee.phone,
-      avatar: employee.avatar,
+      avatar_url: employee.avatarUrl,
       zk_device_id: employee.zkDeviceId,
       shift: employee.shift,
       shift_effective_date: employee.shiftEffectiveDate,
@@ -1188,7 +1247,7 @@ export const bulkUpdateEmployees = async (employees: Employee[], updates: Partia
         end_date: updated.endDate,
         email: updated.email,
         phone: updated.phone,
-        avatar: updated.avatar,
+        avatar_url: updated.avatarUrl,
         zk_device_id: updated.zkDeviceId,
         shift: updated.shift,
         shift_effective_date: updated.shiftEffectiveDate,
@@ -1370,6 +1429,7 @@ export const saveBulkEmployees = async (employees: Partial<Employee>[]) => {
       gender: emp.gender || 'Not Set',
       employment_type: emp.employmentType || 'Full Time',
       workplace: emp.workplace || 'Head Office',
+      avatar_url: emp.avatarUrl || '',
       password: emp.password || '123456'
     }));
 

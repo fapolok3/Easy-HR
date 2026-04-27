@@ -23,6 +23,7 @@ import AdvanceRostering from './pages/AdvanceRostering';
 import DeviceConfig from './pages/DeviceConfig';
 import Login from './pages/Login';
 import AdminPanel from './pages/AdminPanel';
+import { Toaster } from 'sonner';
 import { getCurrentSession, setCurrentSession, getCompanyById, checkSupabase } from './services/api';
 import { AuthSession } from './types';
 import { IconBell, IconSearch, IconMenu, IconX, IconUser, IconAlertCircle } from './components/Icons';
@@ -313,6 +314,47 @@ const App = () => {
 
   return (
     <SessionContext.Provider value={{ session, login, logout }}>
+      <Toaster 
+        theme="dark" 
+        position="top-right" 
+        richColors 
+        containerStyle={{
+          zIndex: 99999,
+        }}
+        toastOptions={{
+          style: {
+            borderRadius: '12px',
+            border: 'none',
+            fontSize: '14px',
+            fontWeight: '600',
+          },
+          success: {
+            style: {
+              background: '#10b981',
+              color: '#fff',
+            },
+          },
+          error: {
+            style: {
+              background: '#ef4444',
+              color: '#fff',
+            },
+          },
+          info: {
+            style: {
+              background: '#3b82f6',
+              color: '#fff',
+            },
+          },
+          loading: {
+            style: {
+              background: 'var(--surface)',
+              color: 'var(--text)',
+              border: '1px solid var(--border)',
+            },
+          },
+        }}
+      />
       <Routes>
       {/* Public Routes */}
       <Route path="/login" element={<Login />} />

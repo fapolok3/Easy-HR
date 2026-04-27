@@ -8,7 +8,7 @@ export interface Employee {
   endDate?: string;
   email: string;
   phone: string;
-  avatar?: string;
+  avatarUrl?: string;
   zkDeviceId?: string;
   shift?: string;
   shiftEffectiveDate?: string;
@@ -140,6 +140,8 @@ export interface AuthSession {
   isEmployee?: boolean;
   employeeId?: string;
   companyId?: string;
+  userName?: string;
+  avatarUrl?: string;
 }
 
 export interface Holiday {

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Input, Button } from '../components/UI';
 import { getCompanies } from '../services/api';
+import { toast } from 'sonner';
 import { AuthSession } from '../types';
 import { IconCheckCircle, IconBot } from '../components/Icons';
 import { useSession } from '../App';
@@ -25,9 +26,13 @@ const Login = () => {
           (email === 'admin@admin.com' && password === 'admin123')) {
         const session: AuthSession = {
           userEmail: email,
-          isSuperAdmin: true
+          isSuperAdmin: true,
+          userName: 'Super Admin'
         };
         login(session);
+        toast.success('Welcome back, Super Admin!', {
+          description: 'You have full access to all system features.',
+        });
         navigate('/admin');
         return;
       }
@@ -40,9 +45,13 @@ const Login = () => {
         const session: AuthSession = {
           userEmail: email,
           isSuperAdmin: false,
-          companyId: company.id
+          companyId: company.id,
+          userName: company.name
         };
         login(session);
+        toast.success(`Welcome to ${company.name}`, {
+          description: 'Successfully signed in as company administrator.',
+        });
         navigate('/');
         return;
       }
@@ -57,17 +66,28 @@ const Login = () => {
           isSuperAdmin: false,
           isEmployee: true,
           employeeId: employee.id,
-          companyId: employee.companyId
+          companyId: employee.companyId,
+          userName: employee.name,
+          avatarUrl: employee.avatarUrl
         };
         login(session);
+        toast.info(`Welcome, ${employee.name}`, {
+          description: 'Successfully signed in to your portal.',
+        });
         navigate('/attendance/mobile-punch');
         return;
       }
 
       setError('Invalid email or password');
+      toast.error('Login Failed', {
+        description: 'Please check your credentials and try again.',
+      });
     } catch (err) {
       console.error(err);
       setError('An error occurred during login. Please try again.');
+      toast.error('System Error', {
+        description: 'An unexpected error occurred. Please contact support.',
+      });
     } finally {
       setIsLoggingIn(false);
     }
@@ -87,7 +107,7 @@ const Login = () => {
              </div>
              <h1 className="text-3xl font-black text-text tracking-tighter uppercase">Easy<span className="text-[#1cbdb0]">HR</span></h1>
           </div>
-          <p className="text-sm text-textMuted font-bold uppercase tracking-widest">Enterprise Management System</p>
+          <p className="text-sm text-textMuted font-bold uppercase tracking-widest">HR Management System</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-6">

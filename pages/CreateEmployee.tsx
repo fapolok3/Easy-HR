@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Button, Input, Select } from '../components/UI';
-import { IconCheckCircle, IconX, IconUsers, IconSettings } from '../components/Icons';
-import { saveLocalEmployee, getOrgSettings, fetchEmployees, checkGlobalEmailExists } from '../services/api';
+import { IconCheckCircle, IconX, IconUsers, IconSettings, IconCamera, IconUser, IconTrash } from '../components/Icons';
+import { saveLocalEmployee, getOrgSettings, checkGlobalEmailExists, uploadEmployeeAvatar } from '../services/api';
 import { OrgSettings } from '../types';
 import { Employee } from '../types';
 
@@ -35,7 +35,30 @@ const CreateEmployee = () => {
     joinDate: new Date().toISOString().split('T')[0]
   });
 
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [error, setError] = useState('');
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        setError('Image size must be less than 2MB');
+        return;
+      }
+      setAvatarFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeAvatar = () => {
+    setAvatarFile(null);
+    setAvatarPreview(null);
+  };
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -58,8 +81,22 @@ const CreateEmployee = () => {
        return;
     }
 
+    const employeeId = formData.officeId || Math.random().toString(36).substr(2, 6).toUpperCase();
+    let avatarUrl = '';
+
+    if (avatarFile) {
+      try {
+        const uploadedUrl = await uploadEmployeeAvatar(avatarFile, employeeId);
+        if (uploadedUrl) avatarUrl = uploadedUrl;
+      } catch (uploadErr: any) {
+        setError(uploadErr.message || 'Failed to upload image');
+        setLoading(false);
+        return;
+      }
+    }
+
     const newEmployee: Employee = {
-      id: formData.officeId || Math.random().toString(36).substr(2, 6).toUpperCase(),
+      id: employeeId,
       name: formData.name,
       designation: formData.designation || 'Not Set',
       department: formData.department || 'Not Set',
@@ -72,6 +109,7 @@ const CreateEmployee = () => {
       shift: formData.shift,
       shiftEffectiveDate: formData.shiftEffectiveDate,
       leavePolicy: formData.leavePolicy,
+      avatarUrl: avatarUrl,
       workplace: formData.workplace,
       password: formData.password
     };
@@ -114,6 +152,32 @@ const CreateEmployee = () => {
           <h2 className="text-lg font-bold text-[#1cbdb0] uppercase flex items-center gap-2">
             <IconUsers className="w-5 h-5" /> Basic Information
           </h2>
+
+          <div className="flex flex-col items-center gap-4 py-4">
+            <div className="relative group">
+              <div className="w-32 h-32 rounded-full bg-surfaceHighlight border-2 border-border flex items-center justify-center overflow-hidden">
+                {avatarPreview ? (
+                  <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
+                ) : (
+                  <IconUser className="w-16 h-16 text-textMuted" />
+                )}
+              </div>
+              <label className="absolute bottom-0 right-0 p-2 bg-[#1cbdb0] hover:bg-[#16a398] text-white rounded-full cursor-pointer shadow-lg transition-transform hover:scale-110">
+                <IconCamera className="w-5 h-5" />
+                <input type="file" className="hidden" accept="image/*" onChange={handleImageChange} />
+              </label>
+              {avatarPreview && (
+                <button 
+                  type="button"
+                  onClick={removeAvatar}
+                  className="absolute top-0 right-0 p-1 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 transition-colors"
+                >
+                  <IconTrash className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-textMuted uppercase font-bold tracking-widest">Employee Photo</p>
+          </div>
           
           <Input 
             label="Full Name" 

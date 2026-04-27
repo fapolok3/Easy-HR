@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Button, Input, Select, Badge, Modal } from '../components/UI';
-import { IconArrowLeft, IconTrash, IconCheckCircle, IconEdit, IconSave } from '../components/Icons';
-import { fetchEmployees, saveLocalEmployee, deleteLocalEmployee, getOrgSettings, getCurrentSession } from '../services/api';
+import { IconArrowLeft, IconTrash, IconCheckCircle, IconEdit, IconSave, IconCamera, IconUser } from '../components/Icons';
+import { fetchEmployees, saveLocalEmployee, deleteLocalEmployee, getOrgSettings, getCurrentSession, uploadEmployeeAvatar, deleteEmployeeAvatar } from '../services/api';
 import { OrgSettings, Employee } from '../types';
 
 const EmployeeProfile = () => {
@@ -21,6 +21,8 @@ const EmployeeProfile = () => {
     shifts: [],
     leavePolicies: []
   });
+
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -79,6 +81,51 @@ const EmployeeProfile = () => {
     }
   };
 
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && employee) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert('Image size must be less than 2MB');
+        return;
+      }
+
+      setIsUploading(true);
+      try {
+        const publicUrl = await uploadEmployeeAvatar(file, employee.id);
+        if (publicUrl) {
+          // If already had an avatar, we might want to delete the old one, but keeping it simple for now
+          const updatedEmployee = { ...employee, avatarUrl: publicUrl };
+          await saveLocalEmployee(updatedEmployee);
+          setEmployee(updatedEmployee);
+          setFormData(prev => ({ ...prev, avatarUrl: publicUrl }));
+        }
+      } catch (err: any) {
+        alert(err.message || 'Failed to upload image');
+      } finally {
+        setIsUploading(false);
+      }
+    }
+  };
+
+  const removeAvatar = async () => {
+    if (employee && employee.avatarUrl) {
+      if (window.confirm('Are you sure you want to remove the profile picture?')) {
+        setIsUploading(true);
+        try {
+          await deleteEmployeeAvatar(employee.avatarUrl);
+          const updatedEmployee = { ...employee, avatarUrl: '' };
+          await saveLocalEmployee(updatedEmployee);
+          setEmployee(updatedEmployee);
+          setFormData(prev => ({ ...prev, avatarUrl: '' }));
+        } catch (err) {
+          console.error(err);
+        } finally {
+          setIsUploading(false);
+        }
+      }
+    }
+  };
+
   if (loading) return <div className="p-8 text-center text-textMuted animate-pulse">Loading profile...</div>;
   if (!employee) return <div className="p-8 text-center text-textMuted">Employee not found.</div>;
 
@@ -118,8 +165,32 @@ const EmployeeProfile = () => {
         <div className="lg:col-span-2 space-y-6">
           <Card className="p-8">
             <div className="flex items-center gap-6 mb-8 pb-8 border-b border-border">
-              <div className="w-24 h-24 rounded-2xl bg-primary/10 text-primary flex items-center justify-center text-3xl font-bold">
-                 {employee.name.split(' ').map(n => n[0]).join('')}
+              <div className="relative group">
+                <div className="w-24 h-24 rounded-2xl bg-primary/10 text-primary flex items-center justify-center text-3xl font-bold overflow-hidden border border-border">
+                  {isUploading ? (
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  ) : employee.avatarUrl ? (
+                    <img src={employee.avatarUrl} alt={employee.name} className="w-full h-full object-cover" />
+                  ) : (
+                    employee.name.split(' ').map(n => n[0]).join('')
+                  )}
+                </div>
+                {!getCurrentSession()?.isEmployee && (
+                  <>
+                    <label className="absolute -bottom-2 -right-2 p-2 bg-[#1cbdb0] hover:bg-[#16a398] text-white rounded-full cursor-pointer shadow-lg transition-transform hover:scale-110 z-10">
+                      <IconCamera className="w-4 h-4" />
+                      <input type="file" className="hidden" accept="image/*" onChange={handleImageChange} disabled={isUploading} />
+                    </label>
+                    {employee.avatarUrl && (
+                      <button 
+                        onClick={removeAvatar}
+                        className="absolute -top-2 -right-2 p-1.5 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 transition-colors z-10"
+                      >
+                        <IconTrash className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
               <div>
                  <h2 className="text-xl font-bold text-text">{employee.name}</h2>

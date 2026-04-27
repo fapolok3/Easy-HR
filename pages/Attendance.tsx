@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, Button, Badge } from '../components/UI';
 import { IconSearch, IconCalendar, IconFilter, IconChevronDown, IconFileText } from '../components/Icons';
 import { fetchAttendance, fetchEmployees } from '../services/api';
+import { toast } from 'sonner';
 import { AttendanceRecord, Employee } from '../types';
 import * as XLSX from 'xlsx';
 
@@ -90,28 +91,49 @@ const Attendance = () => {
   const designations = ['All', ...Array.from(new Set(employees.map(e => e.designation)))];
 
   const handleExport = () => {
-    // Basic export for now
-    const exportData = processedEmployees.map((emp, index) => {
-      const row: any = {
-        'SL': index + 1,
-        'ID': emp.id,
-        'Employee Name': emp.name
-      };
-      
-      uniqueDates.forEach(date => {
-        const rec = records.find(r => r.employeeId === emp.id && r.date === date);
-        row[`${date} Entry`] = formatTimeTo12Hour(rec?.checkIn || '-');
-        row[`${date} Exit`] = formatTimeTo12Hour(rec?.checkOut || '-');
-        row[`${date} Hours`] = rec?.hours || '-';
-      });
-      
-      return row;
+    const promise = new Promise((resolve, reject) => {
+      try {
+        // Basic export for now
+        const exportData = processedEmployees.map((emp, index) => {
+          const row: any = {
+            'SL': index + 1,
+            'ID': emp.id,
+            'Employee Name': emp.name
+          };
+          
+          uniqueDates.forEach(date => {
+            const rec = records.find(r => r.employeeId === emp.id && r.date === date);
+            row[`${date} Entry`] = formatTimeTo12Hour(rec?.checkIn || '-');
+            row[`${date} Exit`] = formatTimeTo12Hour(rec?.checkOut || '-');
+            row[`${date} Hours`] = rec?.hours || '-';
+          });
+          
+          return row;
+        });
+
+        const worksheet = XLSX.utils.json_to_sheet(exportData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Detailed_Report');
+        
+        // Simulating some delay for better UI feel
+        setTimeout(() => {
+          try {
+            XLSX.writeFile(workbook, `Detailed_Attendance_Report_${startDate}_to_${endDate}.xlsx`);
+            resolve(true);
+          } catch (e) {
+            reject(e);
+          }
+        }, 1200);
+      } catch (error) {
+        reject(error);
+      }
     });
 
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Detailed_Report');
-    XLSX.writeFile(workbook, `Detailed_Attendance_Report_${startDate}_to_${endDate}.xlsx`);
+    toast.promise(promise, {
+      loading: 'Preparing and generating Excel report...',
+      success: 'Attendance report exported successfully!',
+      error: 'Failed to export report. Please try again.',
+    });
   };
 
   const formatDateLabel = (dateStr: string) => {

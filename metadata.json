@@ -1,5 +1,5 @@
 {
   "name": "Remix: Easy HR",
-  "description": "Enterprise-grade Human Resource Management System with advanced analytics, real-time attendance tracking, and AI-powered insights.",
+  "description": "HR Management System with advanced analytics, real-time attendance tracking, and AI-powered insights.",
   "requestFramePermissions": ["geolocation"]
 }

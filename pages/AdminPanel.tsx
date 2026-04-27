@@ -3,9 +3,11 @@ import { Card, Input, Button, Modal } from '../components/UI';
 import { getCompanies, createCompany, deleteCompany, setCurrentSession } from '../services/api';
 import { Company } from '../types';
 import { IconPlus, IconTrash, IconEdit, IconCheckCircle } from '../components/Icons';
+import { toast } from 'sonner';
 
 const AdminPanel = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
@@ -39,10 +41,14 @@ const AdminPanel = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.adminEmail || !formData.adminPassword) return;
+    if (!formData.name || !formData.adminEmail || !formData.adminPassword) {
+      toast.error('Missing Information', { description: 'Please fill in all required fields.' });
+      return;
+    }
 
     setLoading(true);
-    try {
+    
+    const savePromise = async () => {
       if (editingCompany) {
          // Update logic if needed
       } else {
@@ -51,17 +57,18 @@ const AdminPanel = () => {
           adminEmail: formData.adminEmail!,
           adminPassword: formData.adminPassword!
         });
-        alert('Company created successfully!');
       }
-      
       await loadCompanies();
       setIsModalOpen(false);
-    } catch (err: any) {
-      console.error(err);
-      alert(err.message || 'An error occurred while saving.');
-    } finally {
-      setLoading(false);
-    }
+    };
+
+    toast.promise(savePromise(), {
+      loading: editingCompany ? 'Updating company...' : 'Creating new company...',
+      success: editingCompany ? 'Company updated successfully!' : 'Company created successfully!',
+      error: (err) => err.message || 'Failed to save company.',
+    });
+
+    setLoading(false);
   };
 
   const handleVisit = (company: Company) => {
@@ -77,8 +84,16 @@ const AdminPanel = () => {
 
   const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this company?')) {
-      await deleteCompany(id);
-      await loadCompanies();
+      const deletePromise = async () => {
+        await deleteCompany(id);
+        await loadCompanies();
+      };
+
+      toast.promise(deletePromise(), {
+        loading: 'Removing company...',
+        success: 'Company deleted successfully!',
+        error: 'Failed to delete company.',
+      });
     }
   };
 
@@ -95,13 +110,39 @@ const AdminPanel = () => {
         </Button>
       </div>
 
+      {/* Company Search Option */}
+      <div className="relative group max-w-md">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-textMuted group-focus-within:text-primary transition-colors">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+        <input 
+          type="text" 
+          placeholder="SEARCH COMPANIES..." 
+          className="block w-full pl-10 pr-3 py-2 bg-surfaceHighlight/50 border border-border rounded-xl text-xs uppercase font-bold tracking-widest placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+
       <div className="grid grid-cols-1 gap-4">
-        {companies.length === 0 ? (
+        {companies
+          .filter(company => 
+            company.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+            company.adminEmail.toLowerCase().includes(searchTerm.toLowerCase())
+          )
+          .length === 0 ? (
           <Card className="p-12 text-center text-textMuted italic border-dashed">
-            No companies registered yet. Create one to get started.
+            {searchTerm ? 'No companies match your search.' : 'No companies registered yet. Create one to get started.'}
           </Card>
         ) : (
-          companies.map((company) => (
+          companies
+            .filter(company => 
+              company.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+              company.adminEmail.toLowerCase().includes(searchTerm.toLowerCase())
+            )
+            .map((company) => (
             <div key={company.id}>
               <Card className="p-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">

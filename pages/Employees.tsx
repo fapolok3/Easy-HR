@@ -148,44 +148,51 @@ const Employees = () => {
            <h1 className="text-2xl md:text-3xl font-bold text-text uppercase tracking-tight">Employees</h1>
            <p className="text-textMuted text-sm">View and manage all employee records in one place.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 md:gap-3">
-           <div className="flex items-center gap-2 bg-surfaceHighlight p-2 rounded-lg border border-border focus-within:ring-2 focus-within:ring-primary/20">
-             <span className="text-[10px] text-textMuted uppercase font-bold">Rows:</span>
+        <div className="flex flex-wrap items-center gap-2">
+           <div className="flex items-center gap-1.5 bg-surfaceHighlight/50 px-2 py-1 rounded-lg border border-border">
+             <span className="text-[10px] text-textMuted uppercase font-bold tracking-wider">Rows:</span>
              <select 
                value={rowsPerPage} 
                onChange={(e) => {
                  setRowsPerPage(Number(e.target.value));
                  setCurrentPage(1);
                }}
-               className="bg-transparent text-xs font-bold rounded p-1 outline-none cursor-pointer"
+               className="bg-transparent text-xs font-bold text-text outline-none cursor-pointer pr-1"
              >
                {[50, 100, 500, 1000].map(size => (
                  <option key={size} value={size}>{size}</option>
                ))}
              </select>
            </div>
-           <Button variant="secondary" onClick={downloadSample} className="gap-2">
-             <IconDownload className="w-4 h-4" /> Sample
+           
+           <Button size="sm" variant="secondary" onClick={downloadSample} className="gap-1 px-3">
+             <IconDownload className="w-3.5 h-3.5" /> <span>Sample</span>
            </Button>
-           <Button variant="secondary" onClick={() => fileInputRef.current?.click()} isLoading={isUploading} className="gap-2">
-             <IconUpload className="w-4 h-4" /> Bulk Upload
+           
+           <Button size="sm" variant="secondary" onClick={() => fileInputRef.current?.click()} isLoading={isUploading} className="gap-1 px-3">
+             <IconUpload className="w-3.5 h-3.5" /> <span>Upload</span>
            </Button>
-           {selectedIds.length > 0 && (
-             <Button variant="primary" onClick={() => navigate('/employees/bulk', { state: { ids: selectedIds } })} className="animate-in fade-in slide-in-from-right-4">
-               Manage Employees ({selectedIds.length})
-             </Button>
-           )}
+
            <button 
              onClick={() => setIsFilterVisible(!isFilterVisible)}
-             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all border ${
+             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border uppercase tracking-wider ${
                isFilterVisible ? 'bg-primary/10 border-primary text-primary' : 'bg-surface border-border text-text hover:bg-surfaceHighlight'
              }`}
            >
-             <IconFilter className="w-4 h-4" />
-             <span>FILTER</span>
-             {isFilterVisible ? <IconChevronUp className="w-4 h-4" /> : <IconChevronDown className="w-4 h-4" />}
+             <IconFilter className="w-3.5 h-3.5" />
+             <span>Filter</span>
+             {isFilterVisible ? <IconChevronUp className="w-3.5 h-3.5" /> : <IconChevronDown className="w-3.5 h-3.5" />}
            </button>
-           <Button onClick={() => navigate('/employees/create')}>+ Create Employee</Button>
+
+           <Button size="sm" onClick={() => navigate('/employees/create')} className="px-3">
+             + Create
+           </Button>
+           
+           {selectedIds.length > 0 && (
+             <Button size="sm" variant="primary" onClick={() => navigate('/employees/bulk', { state: { ids: selectedIds } })} className="animate-in fade-in slide-in-from-right-4 px-3">
+               Manage ({selectedIds.length})
+             </Button>
+           )}
         </div>
       </div>
 
@@ -333,8 +340,12 @@ const Employees = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                         <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs">
-                           {emp.name.split(' ').map(n => n[0]).join('')}
+                         <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs overflow-hidden">
+                           {emp.avatarUrl ? (
+                             <img src={emp.avatarUrl} alt={emp.name} className="w-full h-full object-cover" />
+                           ) : (
+                             emp.name.split(' ').map(n => n[0]).join('')
+                           )}
                          </div>
                          <div>
                             <Link to={`/employees/${emp.id}`} className="font-medium text-text hover:text-primary transition-colors hover:underline">
