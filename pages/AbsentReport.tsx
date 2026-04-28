@@ -4,10 +4,13 @@ import { Card, Input, Button, Badge } from '../components/UI';
 import { fetchAttendance } from '../services/api';
 import { AttendanceRecord } from '../types';
 import { IconXCircle, IconFilter, IconDownload } from '../components/Icons';
+import DateRangePicker from '../components/DateRangePicker';
+import { format, startOfToday } from 'date-fns';
 
 const AbsentReport = () => {
   const navigate = useNavigate();
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState(format(startOfToday(), 'yyyy-MM-dd'));
+  const [endDate, setEndDate] = useState(format(startOfToday(), 'yyyy-MM-dd'));
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -16,7 +19,7 @@ const AbsentReport = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const data = await fetchAttendance(date, date);
+      const data = await fetchAttendance(startDate, endDate);
       // Filter for absent records or those on an off day
       setRecords(data.filter(r => r.status === 'Absent' || r.status === 'Off Day'));
     } catch (error) {
@@ -28,18 +31,27 @@ const AbsentReport = () => {
 
   useEffect(() => {
     loadData();
-  }, [date]);
+  }, [startDate, endDate]);
 
   return (
     <div className="p-4 md:p-8 max-w-[1200px] mx-auto space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-text uppercase tracking-tight">Daily Absent Report</h1>
-          <p className="text-sm text-textMuted">List of employees who were absent on the selected date.</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-text uppercase tracking-tight">Absent Report</h1>
+          <p className="text-sm text-textMuted">List of employees who were absent during the selected period.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 md:gap-3">
-          <div className="flex items-center gap-2 bg-surfaceHighlight p-2 rounded-lg border border-border shadow-sm">
-            <span className="text-[10px] text-textMuted uppercase font-bold">Rows:</span>
+        <div className="flex flex-wrap items-center gap-3 relative z-50">
+          <DateRangePicker 
+            startDate={startDate} 
+            endDate={endDate} 
+            onChange={(start, end) => {
+              setStartDate(start);
+              setEndDate(end);
+            }} 
+          />
+          
+          <div className="flex items-center gap-2 bg-surfaceHighlight p-2 rounded-xl border border-border">
+            <span className="text-[10px] text-textMuted uppercase font-bold tracking-widest px-1">Rows:</span>
             <select 
               value={rowsPerPage} 
               onChange={(e) => {
@@ -53,15 +65,10 @@ const AbsentReport = () => {
               ))}
             </select>
           </div>
-          <Input 
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-[200px]"
-          />
-          <Button onClick={loadData} variant="secondary">
+
+          <Button onClick={loadData} variant="secondary" className="rounded-xl h-10 px-6">
             <IconFilter className="w-4 h-4 mr-2" />
-            Refresh
+            REFRESH
           </Button>
         </div>
       </div>

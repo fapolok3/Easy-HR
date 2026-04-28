@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Card, Button, Badge } from '../components/UI';
 import { IconSearch, IconCalendar, IconUser, IconChevronDown, IconFileText, IconClock, IconCheckCircle, IconXCircle, IconAlertCircle } from '../components/Icons';
 import { fetchAttendance, fetchEmployees, getCurrentSession } from '../services/api';
+import DateRangePicker from '../components/DateRangePicker';
 import { AttendanceRecord, Employee } from '../types';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
 
 const IndividualAttendanceReport = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -13,8 +15,8 @@ const IndividualAttendanceReport = () => {
   
   // Date State - Default to current month
   const today = new Date();
-  const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
-  const [selectedYear, setSelectedYear] = useState(today.getFullYear());
+  const [startDate, setStartDate] = useState(format(startOfMonth(today), 'yyyy-MM-dd'));
+  const [endDate, setEndDate] = useState(format(endOfMonth(today), 'yyyy-MM-dd'));
 
   useEffect(() => {
     const loadEmployees = async () => {
@@ -34,37 +36,16 @@ const IndividualAttendanceReport = () => {
     if (selectedEmployee) {
       loadReport();
     }
-  }, [selectedEmployee, selectedMonth, selectedYear]);
+  }, [selectedEmployee, startDate, endDate]);
 
   const loadReport = async () => {
     setLoading(true);
-    // Calculate start and end date for the selected month
-    const start = new Date(selectedYear, selectedMonth, 1);
-    const end = new Date(selectedYear, selectedMonth + 1, 0);
-    
-    const formatDateObj = (date: Date) => {
-      const y = date.getFullYear();
-      const m = String(date.getMonth() + 1).padStart(2, '0');
-      const d = String(date.getDate()).padStart(2, '0');
-      return `${y}-${m}-${d}`;
-    };
-
-    const startDate = formatDateObj(start);
-    const endDate = formatDateObj(end);
-    
     const data = await fetchAttendance(startDate, endDate);
     // Filter for the selected employee
     const empRecords = data.filter(r => r.employeeId === selectedEmployee?.id);
     setRecords(empRecords);
     setLoading(false);
   };
-
-  const months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
-
-  const years = Array.from({ length: 5 }, (_, i) => today.getFullYear() - i);
 
   // Summary Calculations
   const summary = {
@@ -81,13 +62,12 @@ const IndividualAttendanceReport = () => {
     }, 0).toFixed(2),
     expectedWorkingHours: records.reduce((acc, r) => {
         if (!r) return acc;
-        const isCurrentMonth = selectedMonth === today.getMonth() && selectedYear === today.getFullYear();
         const recordDate = new Date(r.date);
         const reportToday = new Date();
         reportToday.setHours(0,0,0,0);
         
-        // If current month, only count expected hours up to today
-        if (isCurrentMonth && recordDate > reportToday) {
+        // Only count expected hours for dates that have already passed (including today)
+        if (recordDate > reportToday) {
             return acc;
         }
         
@@ -170,35 +150,24 @@ const IndividualAttendanceReport = () => {
         {/* Main Content: Report */}
         <div className={getCurrentSession()?.isEmployee ? "lg:col-span-4 space-y-6" : "lg:col-span-3 space-y-6"}>
           {/* Controls */}
-          <Card className="p-4 flex flex-wrap items-center gap-4">
-            <div className="flex flex-col">
-              <label className="text-[10px] font-bold text-textMuted uppercase mb-1">Month</label>
-              <select 
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                className="bg-background border border-border rounded px-3 py-1.5 text-sm focus:outline-none min-w-[120px]"
-              >
-                {months.map((m, i) => <option key={m} value={i}>{m}</option>)}
-              </select>
-            </div>
-            <div className="flex flex-col">
-              <label className="text-[10px] font-bold text-textMuted uppercase mb-1">Year</label>
-              <select 
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className="bg-background border border-border rounded px-3 py-1.5 text-sm focus:outline-none min-w-[100px]"
-              >
-                {years.map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
-            </div>
+          <Card className="p-4 flex flex-wrap items-center gap-4 relative z-50">
+            <DateRangePicker 
+              startDate={startDate} 
+              endDate={endDate} 
+              onChange={(start, end) => {
+                setStartDate(start);
+                setEndDate(end);
+              }} 
+            />
+            
             <div className="flex flex-col ml-auto">
                <Button 
                 variant="primary" 
                 onClick={loadReport} 
                 disabled={!selectedEmployee || loading}
-                className="mt-auto"
+                className="mt-auto px-6"
                >
-                 {loading ? 'Loading...' : 'Refresh Report'}
+                 {loading ? 'Processing...' : 'Sync Data'}
                </Button>
             </div>
           </Card>

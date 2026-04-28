@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Button, Badge } from '../components/UI';
-import { IconSearch, IconCalendar, IconFilter, IconChevronDown, IconFileText } from '../components/Icons';
+import { IconSearch, IconCalendar, IconFilter, IconChevronDown, IconFileText, IconChevronUp } from '../components/Icons';
+import DateRangePicker from '../components/DateRangePicker';
 import { fetchAttendance, fetchEmployees } from '../services/api';
 import { toast } from 'sonner';
 import { AttendanceRecord, Employee } from '../types';
@@ -219,7 +220,7 @@ const Attendance = () => {
       )}
 
       {/* Filter Toolbar - Stable width */}
-      <div className="flex flex-wrap items-center gap-3 bg-surface p-4 rounded-lg shadow-sm border border-border flex-shrink-0 max-w-full overflow-hidden">
+      <div className="flex flex-wrap items-center gap-3 bg-surface p-4 rounded-lg shadow-sm border border-border flex-shrink-0 max-w-full relative z-40">
         {/* Search */}
         <div className="relative flex-1 min-w-[200px]">
           <input 
@@ -233,68 +234,69 @@ const Attendance = () => {
         </div>
 
         {/* Date Range Selector */}
-        <div className="flex items-center gap-2 bg-surface border border-border rounded px-3 py-2 h-10 w-full sm:w-auto">
-          <div className="flex items-center gap-2">
-             <input 
-               type="date" 
-               value={startDate}
-               onChange={(e) => {
-                  setStartDate(e.target.value);
-               }}
-               className="bg-transparent border-none text-sm text-text focus:outline-none p-0 w-[115px]" 
-             />
-             <span className="text-textMuted">-</span>
-             <input 
-               type="date" 
-               value={endDate}
-               onChange={(e) => {
-                  setEndDate(e.target.value);
-               }}
-               className="bg-transparent border-none text-sm text-text focus:outline-none p-0 w-[115px]" 
-             />
-          </div>
-          <IconCalendar className="w-4 h-4 text-textMuted" />
-        </div>
+        <DateRangePicker 
+          startDate={startDate} 
+          endDate={endDate} 
+          onChange={(start, end) => {
+            setStartDate(start);
+            setEndDate(end);
+          }} 
+        />
 
         {/* Status Dropdown */}
-        <div className="relative h-10 w-full sm:w-[180px]">
+        <div className="relative h-10 w-full sm:w-auto min-w-[160px]">
            <div 
             onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-            className="flex items-center justify-between bg-surface border border-border rounded px-3 py-2 w-full h-full text-sm text-textMuted cursor-pointer hover:border-primary transition-colors"
+            className="flex items-center justify-between gap-3 bg-surface border border-border rounded-xl px-4 py-2 w-full h-full text-sm font-semibold text-text cursor-pointer hover:border-primary/50 transition-all shadow-sm"
            >
-              <span>{statusFilter === 'All' ? 'Attendance Status' : statusFilter}</span>
-              <IconChevronDown className="w-4 h-4" />
+              <div className="flex flex-col">
+                <span className="text-[9px] text-textMuted uppercase font-bold tracking-wider leading-none mb-0.5">Status</span>
+                <span>{statusFilter === 'All' ? 'All Records' : statusFilter}</span>
+              </div>
+              <IconChevronDown className={`w-4 h-4 text-textMuted transition-transform ${showStatusDropdown ? 'rotate-180' : ''}`} />
            </div>
            
            {showStatusDropdown && (
-             <>
-               <div className="fixed inset-0 z-10" onClick={() => setShowStatusDropdown(false)}></div>
-               <div className="absolute top-full left-0 mt-1 w-full bg-surface border border-border rounded shadow-lg z-50 overflow-hidden">
-                  {['All', 'Present', 'Absent', 'Late'].map(status => (
-                    <div 
-                      key={status}
-                      onClick={() => {
-                        setStatusFilter(status);
-                        setShowStatusDropdown(false);
-                      }}
-                      className="px-4 py-2 text-sm text-text hover:bg-surfaceHighlight cursor-pointer"
-                    >
-                      {status}
-                    </div>
-                  ))}
-               </div>
-             </>
+             <div className="absolute top-full left-0 mt-2 w-full bg-surface border border-border rounded-xl shadow-xl z-50 overflow-hidden min-w-[180px] animate-in fade-in slide-in-from-top-2">
+                {['All', 'Present', 'Absent', 'Late'].map(status => (
+                  <div 
+                    key={status}
+                    onClick={() => {
+                      setStatusFilter(status);
+                      setShowStatusDropdown(false);
+                    }}
+                    className={`px-4 py-2.5 text-sm font-medium hover:bg-surfaceHighlight cursor-pointer flex items-center justify-between ${statusFilter === status ? 'text-primary bg-primary/5' : 'text-text'}`}
+                  >
+                    {status}
+                    {statusFilter === status && <div className="w-1.5 h-1.5 rounded-full bg-primary" />}
+                  </div>
+                ))}
+             </div>
            )}
+        </div>
+
+        {/* Sort By Dropdown */}
+        <div className="flex items-center gap-2 bg-surface border border-border rounded-xl px-4 py-2 h-10 w-full sm:w-auto shadow-sm">
+           <div className="flex flex-col">
+              <span className="text-[9px] text-textMuted uppercase font-bold tracking-wider leading-none mb-0.5">Sort By</span>
+              <select 
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="bg-transparent border-none text-sm font-semibold text-text focus:outline-none p-0 cursor-pointer"
+              >
+                <option value="Name">Name</option>
+                <option value="ID">ID</option>
+              </select>
+           </div>
         </div>
 
         {/* Excel Export */}
         <button 
           onClick={handleExport}
-          className="flex items-center justify-center gap-2 bg-[#1e293b] text-white px-4 h-10 rounded text-sm font-medium hover:bg-slate-900 transition-colors w-full sm:w-auto"
+          className="flex items-center justify-center gap-2 bg-text text-white px-5 h-10 rounded-xl text-sm font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 active:scale-95 w-full sm:w-auto"
         >
-          <IconFileText className="w-4 h-4 text-[#1cbdb0]" />
-          <span>Excel</span>
-          <IconChevronDown className="w-4 h-4" />
+          <IconFileText className="w-4 h-4 text-primary" />
+          <span>EXPORT</span>
         </button>
       </div>
 

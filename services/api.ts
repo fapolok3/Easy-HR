@@ -770,24 +770,36 @@ export const saveMobilePunch = async (punch: Omit<MobilePunch, 'id'>): Promise<M
 
 // --- REAL API IMPLEMENTATION ---
 
-// Generic fetch wrapper with token injection
-const apiFetch = async (endpoint: string) => {
+// Generic fetch wrapper with token injection and error handling
+const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   const config = await getApiConfig();
   if (!config.token) throw new Error("Missing API Token");
   
-  const baseUrl = config.baseUrl.replace(/\/$/, ''); // Remove trailing slash
+  const baseUrl = config.baseUrl.replace(/\/$/, '');
   const separator = endpoint.includes('?') ? '&' : '?';
   const url = `${baseUrl}${endpoint}${separator}api_token=${config.token}`;
 
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: { 'Accept': 'application/json' }
-  });
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Accept': 'application/json',
+        ...options.headers,
+      }
+    });
 
-  if (!response.ok) {
-    throw new Error(`API Request Failed: ${response.status} ${response.statusText}`);
+    if (!response.ok) {
+      throw new Error(`API Request Failed: ${response.status} ${response.statusText}`);
+    }
+    return response.json();
+  } catch (err: any) {
+    if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
+      const errorMsg = `Network Error: Failed to reach API at ${baseUrl}. Please check your connection and ensure the API server supports CORS.`;
+      console.error(errorMsg, err);
+      throw new Error(errorMsg);
+    }
+    throw err;
   }
-  return response.json();
 };
 
 export const fetchEmployees = async (): Promise<Employee[]> => {
@@ -1289,21 +1301,14 @@ export const getFingerprints = async (personIdentifier: string): Promise<Fingerp
 
 export const deleteFingerprints = async (personIdentifier: string, fingerprints: { finger_id?: number, hand?: string, finger?: string }[]) => {
   try {
-    const config = await getApiConfig();
     const encodedId = encodeURIComponent(personIdentifier);
-    const url = `${config.baseUrl.replace(/\/$/, '')}/people/${encodedId}/fingerprints?api_token=${config.token}`;
+    const endpoint = `/people/${encodedId}/fingerprints`;
     
-    const response = await fetch(url, {
+    return await apiFetch(endpoint, {
       method: 'DELETE',
-      headers: { 
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ fingerprints })
     });
-
-    if (!response.ok) throw new Error('Delete failed');
-    return await response.json();
   } catch (err) {
     console.error('Error deleting fingerprints:', err);
     throw err;
@@ -1312,19 +1317,13 @@ export const deleteFingerprints = async (personIdentifier: string, fingerprints:
 
 export const startEnrollment = async (deviceIdentifier: string, personIdentifier: string, hand: string, finger: string) => {
   try {
-    const config = await getApiConfig();
-    const url = `${config.baseUrl.replace(/\/$/, '')}/devices/${deviceIdentifier}/startEnrollment?api_token=${config.token}`;
+    const endpoint = `/devices/${deviceIdentifier}/startEnrollment`;
     
-    const response = await fetch(url, {
+    return await apiFetch(endpoint, {
       method: 'POST',
-      headers: { 
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ person_identifier: personIdentifier, hand, finger })
     });
-
-    return await response.json();
   } catch (err) {
     console.error('Error starting enrollment:', err);
     throw err;
@@ -1333,15 +1332,8 @@ export const startEnrollment = async (deviceIdentifier: string, personIdentifier
 
 export const stopEnrollment = async (deviceIdentifier: string) => {
   try {
-    const config = await getApiConfig();
-    const url = `${config.baseUrl.replace(/\/$/, '')}/devices/${deviceIdentifier}/stopEnrollment?api_token=${config.token}`;
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Accept': 'application/json' }
-    });
-
-    return await response.json();
+    const endpoint = `/devices/${deviceIdentifier}/stopEnrollment`;
+    return await apiFetch(endpoint, { method: 'POST' });
   } catch (err) {
     console.error('Error stopping enrollment:', err);
     throw err;
@@ -1350,17 +1342,8 @@ export const stopEnrollment = async (deviceIdentifier: string) => {
 
 export const getEnrollmentStatus = async (deviceId: string, personId: string): Promise<EnrollmentStatus> => {
   try {
-    const config = await getApiConfig();
-    const url = `${config.baseUrl.replace(/\/$/, '')}/devices/enrollment_status?api_token=${config.token}&device_id=${deviceId}&person_id=${personId}`;
-    
-    // The documentation says GET with Body, which is unusual for fetch/GET. 
-    // Usually, this would be query params. Let's try query params first as shown in my URL string above.
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: { 'Accept': 'application/json' }
-    });
-
-    return await response.json();
+    const endpoint = `/devices/enrollment_status?device_id=${deviceId}&person_id=${personId}`;
+    return await apiFetch(endpoint);
   } catch (err) {
     console.error('Error getting enrollment status:', err);
     throw err;
@@ -1369,19 +1352,13 @@ export const getEnrollmentStatus = async (deviceId: string, personId: string): P
 
 export const updateDeviceAllocation = async (deviceIdentifier: string, personIdentifier: string, action: 'allocate' | 'revoke') => {
   try {
-    const config = await getApiConfig();
-    const url = `${config.baseUrl.replace(/\/$/, '')}/devices/${deviceIdentifier}/allocations?api_token=${config.token}`;
+    const endpoint = `/devices/${deviceIdentifier}/allocations`;
     
-    const response = await fetch(url, {
+    return await apiFetch(endpoint, {
       method: 'POST',
-      headers: { 
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify([{ person_identifier: personIdentifier, action }])
     });
-
-    return await response.json();
   } catch (err) {
     console.error(`Error updating allocation (${action}):`, err);
     throw err;
@@ -1390,19 +1367,13 @@ export const updateDeviceAllocation = async (deviceIdentifier: string, personIde
 
 export const batchDeviceAllocations = async (action: 'allocate' | 'revoke', personIdentifiers: string[], deviceIds: string[]) => {
   try {
-    const config = await getApiConfig();
-    const url = `${config.baseUrl.replace(/\/$/, '')}/devices/batch-allocations?api_token=${config.token}`;
+    const endpoint = `/devices/batch-allocations`;
     
-    const response = await fetch(url, {
+    return await apiFetch(endpoint, {
       method: 'POST',
-      headers: { 
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action, person_identifiers: personIdentifiers, device_ids: deviceIds })
     });
-
-    return await response.json();
   } catch (err) {
     console.error('Error in batch allocations:', err);
     throw err;
