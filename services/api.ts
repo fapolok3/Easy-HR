@@ -789,7 +789,17 @@ const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
     });
 
     if (!response.ok) {
-      throw new Error(`API Request Failed: ${response.status} ${response.statusText}`);
+      let errorDetail = '';
+      try {
+        const errorBody = await response.text();
+        try {
+          const errorJson = JSON.parse(errorBody);
+          errorDetail = ` - ${errorJson.message || errorJson.error || errorBody}`;
+        } catch (e) {
+          errorDetail = ` - ${errorBody.substring(0, 200)}`;
+        }
+      } catch (e) {}
+      throw new Error(`API Request Failed: ${response.status} ${response.statusText}${errorDetail}`);
     }
     return response.json();
   } catch (err: any) {
@@ -1326,12 +1336,15 @@ export const createPerson = async (person: {
     const formData = new FormData();
     formData.append('identifier', person.identifier);
     formData.append('name', person.name);
-    // Ensure text lengths match API constraints (max 10 chars)
-    formData.append('primary_display_text', person.primary_display_text.substring(0, 10));
-    formData.append('secondary_display_text', (person.secondary_display_text || '').substring(0, 10));
     
-    if (person.rfid) {
-      formData.append('rfid', person.rfid);
+    // Ensure text lengths match API constraints (max 10 chars)
+    const pText = (person.primary_display_text || 'Welcome').substring(0, 10);
+    const sText = (person.secondary_display_text || 'Employee').substring(0, 10);
+    formData.append('primary_display_text', pText);
+    formData.append('secondary_display_text', sText);
+    
+    if (person.rfid && person.rfid.trim()) {
+      formData.append('rfid', person.rfid.substring(0, 10));
     }
 
     const config = await getApiConfig();
@@ -1343,21 +1356,21 @@ export const createPerson = async (person: {
       headers: {
         'Accept': 'application/json',
       },
-      // Do not set Content-Type header manually for FormData to allow browser to set boundary
       body: formData
     });
 
-    if (!response.ok) {
-      // Try to get error message from response
-      const errText = await response.text();
-      let errMessage = `API Request Failed: ${response.status}`;
-      try {
-        const errJson = JSON.parse(errText);
-        errMessage = errJson.message || errMessage;
-      } catch (e) {}
-      throw new Error(errMessage);
+    const respText = await response.text();
+    let respData;
+    try {
+      respData = JSON.parse(respText);
+    } catch (e) {
+      respData = { message: respText };
     }
-    return response.json();
+
+    if (!response.ok) {
+      throw new Error(respData.message || respData.error || `API Request Failed: ${response.status}`);
+    }
+    return respData;
   } catch (err) {
     console.error('Error creating person:', err);
     throw err;
@@ -1366,7 +1379,7 @@ export const createPerson = async (person: {
 
 export const startEnrollment = async (deviceIdentifier: string, personIdentifier: string, hand: string, finger: string) => {
   try {
-    // API Documentation Page 14 specifically requires device_identifier in the path
+    // Documentation Page 14 specifically indicates device_identifier in the path
     const endpoint = `/devices/${deviceIdentifier}/startEnrollment`;
     
     return await apiFetch(endpoint, {
@@ -1376,7 +1389,7 @@ export const startEnrollment = async (deviceIdentifier: string, personIdentifier
         'Accept': 'application/json'
       },
       body: JSON.stringify({ 
-        person_identifier: personIdentifier, 
+        person_identifier: String(personIdentifier), 
         hand: hand.toLowerCase(), 
         finger: finger.toLowerCase() 
       })

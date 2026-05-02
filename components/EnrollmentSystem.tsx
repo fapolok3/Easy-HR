@@ -105,8 +105,6 @@ export const EnrollmentSystem: React.FC = () => {
       setLoading(true);
       
       let pId = null;
-
-      // Step 1: Ensure person is created in Tipsoi system (POST /people)
       try {
         const res = await createPerson({
           identifier: selectedEmployee.id,
@@ -116,19 +114,22 @@ export const EnrollmentSystem: React.FC = () => {
         });
         pId = String(res.id);
         setTipsoiPersonId(pId);
-        toast.info('Personnel record synced with device server');
+        toast.info('Personnel record synced');
       } catch (err: any) {
         console.log('Registration info:', err.message);
-        // If they already exist, we might not get the ID back here easily 
-        // unless the error contains it or we have another way.
-        // For now we'll proceed using the identifier as pId
+        // If they already exist, we ignore the error and proceed
       }
 
       // Step 2: Allocate user to the specific device if needed
-      await updateDeviceAllocation(String(selectedDevice.identifier), selectedEmployee.id, 'allocate');
+      try {
+        // Documentation Page 16: {{BASE URL}}/devices/{{device_identifier}}/allocations
+        await updateDeviceAllocation(selectedDevice.identifier, selectedEmployee.id, 'allocate');
+      } catch (err: any) {
+        console.log('Allocation info:', err.message);
+      }
 
       // Step 3: Start Enrollment (POST /devices/{device_identifier}/startEnrollment)
-      // Documentation Page 14 specifically uses device_identifier string in path
+      // Documentation Page 14 specifically indicates device_identifier in the path
       const res = await startEnrollment(
         selectedDevice.identifier, 
         selectedEmployee.id, 
@@ -150,7 +151,7 @@ export const EnrollmentSystem: React.FC = () => {
     if (!selectedDevice) return;
     try {
       setLoading(true);
-      await stopEnrollment(String(selectedDevice.identifier));
+      await stopEnrollment(selectedDevice.identifier);
       setEnrolling(false);
       toast.success('Enrollment stopped');
     } catch (error: any) {
