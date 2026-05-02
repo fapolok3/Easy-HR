@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { IconDashboard, IconUsers, IconSettings, IconClock, IconCalendar, IconDevice, IconFileText, IconCheckCircle, IconBot, IconXCircle } from './Icons';
+import { IconDashboard, IconUsers, IconSettings, IconClock, IconCalendar, IconDevice, IconFileText, IconCheckCircle, IconBot, IconXCircle, IconFingerprint } from './Icons';
 import { useSession } from '../App';
 
 const Sidebar = ({ isCollapsed }: { isCollapsed: boolean }) => {
@@ -21,6 +21,7 @@ const Sidebar = ({ isCollapsed }: { isCollapsed: boolean }) => {
     { to: '/attendance/mobile-punch', label: 'Mobile Punch', icon: IconDevice },
     { to: '/attendance/mobile-report', label: 'Mobile Report', icon: IconFileText },
     { to: '/devices', label: 'Devices', icon: IconDevice },
+    { to: '/enrollment', label: 'Finger Enrollment', icon: IconFingerprint },
     { to: '/settings', label: 'Settings', icon: IconSettings },
   ];
 

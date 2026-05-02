@@ -23,6 +23,7 @@ import AdvanceRostering from './pages/AdvanceRostering';
 import DeviceConfig from './pages/DeviceConfig';
 import Login from './pages/Login';
 import AdminPanel from './pages/AdminPanel';
+import { EnrollmentSystem } from './components/EnrollmentSystem';
 import { Toaster } from 'sonner';
 import { getCurrentSession, setCurrentSession, getCompanyById, checkSupabase } from './services/api';
 import { AuthSession } from './types';
@@ -386,6 +387,7 @@ const App = () => {
           <Route path="/leave" element={<Layout><Leave /></Layout>} />
           <Route path="/apply-leave" element={<Layout><ApplyLeave /></Layout>} />
           <Route path="/approvals" element={<Layout><Approvals /></Layout>} />
+          <Route path="/enrollment" element={<Layout><EnrollmentSystem /></Layout>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </>
       ) : (

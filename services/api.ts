@@ -1315,14 +1315,71 @@ export const deleteFingerprints = async (personIdentifier: string, fingerprints:
   }
 };
 
+export const createPerson = async (person: {
+  identifier: string;
+  name: string;
+  primary_display_text: string;
+  secondary_display_text: string;
+  rfid?: string;
+}) => {
+  try {
+    const formData = new FormData();
+    formData.append('identifier', person.identifier);
+    formData.append('name', person.name);
+    // Ensure text lengths match API constraints (max 10 chars)
+    formData.append('primary_display_text', person.primary_display_text.substring(0, 10));
+    formData.append('secondary_display_text', (person.secondary_display_text || '').substring(0, 10));
+    
+    if (person.rfid) {
+      formData.append('rfid', person.rfid);
+    }
+
+    const config = await getApiConfig();
+    const baseUrl = config.baseUrl.replace(/\/$/, '');
+    const url = `${baseUrl}/people?api_token=${config.token}`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+      },
+      // Do not set Content-Type header manually for FormData to allow browser to set boundary
+      body: formData
+    });
+
+    if (!response.ok) {
+      // Try to get error message from response
+      const errText = await response.text();
+      let errMessage = `API Request Failed: ${response.status}`;
+      try {
+        const errJson = JSON.parse(errText);
+        errMessage = errJson.message || errMessage;
+      } catch (e) {}
+      throw new Error(errMessage);
+    }
+    return response.json();
+  } catch (err) {
+    console.error('Error creating person:', err);
+    throw err;
+  }
+};
+
 export const startEnrollment = async (deviceIdentifier: string, personIdentifier: string, hand: string, finger: string) => {
   try {
+    // API Documentation Page 14 specifically requires device_identifier in the path
     const endpoint = `/devices/${deviceIdentifier}/startEnrollment`;
     
     return await apiFetch(endpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ person_identifier: personIdentifier, hand, finger })
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ 
+        person_identifier: personIdentifier, 
+        hand: hand.toLowerCase(), 
+        finger: finger.toLowerCase() 
+      })
     });
   } catch (err) {
     console.error('Error starting enrollment:', err);

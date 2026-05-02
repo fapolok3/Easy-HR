@@ -122,11 +122,16 @@ const DeviceConfig = () => {
   const handleStartEnrollment = async () => {
     if (!selectedEmployee || !device) return;
     try {
-      await startEnrollment(String(device.identifier), selectedEmployee.id, enrollmentForm.hand, enrollmentForm.finger);
+      // Use device.id instead of identifier for the URL path as per sample
+      await startEnrollment(device.id, selectedEmployee.id, enrollmentForm.hand, enrollmentForm.finger);
       setIsEnrollmentModalOpen(true);
       checkEnrollmentStatus();
-    } catch (err) {
-      alert('Failed to start enrollment.');
+    } catch (err: any) {
+      setToast({
+        message: `Error starting enrollment: ${err.message || 'Unknown error'}`,
+        type: 'danger',
+        visible: true
+      });
     }
   };
 
