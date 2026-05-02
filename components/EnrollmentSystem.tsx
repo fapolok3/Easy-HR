@@ -87,37 +87,62 @@ export const EnrollmentSystem: React.FC = () => {
 
   const [tipsoiPersonId, setTipsoiPersonId] = useState<string | null>(null);
 
-  // Polling for status when enrolling
+  // Polling for status and local finger verification when enrolling
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (enrolling && selectedDevice && (tipsoiPersonId || selectedEmployee)) {
-      interval = setInterval(async () => {
-        try {
-          // Status API needs device_id (numeric) and person_id (numeric)
-          // Using tipsoiPersonId if we just created it, or fallback to employee.id if it's numeric
-          const pId = tipsoiPersonId || selectedEmployee?.id;
-          if (!pId) return;
+    let statusInterval: NodeJS.Timeout;
+    let fingerInterval: NodeJS.Timeout;
 
+    if (enrolling && selectedDevice && selectedEmployee) {
+      const pId = tipsoiPersonId || selectedEmployee.id;
+
+      // Check general enrollment session status
+      statusInterval = setInterval(async () => {
+        try {
           const statusData = await getEnrollmentStatus(String(selectedDevice.id), pId);
           setStatus(statusData);
+          
+          // If session is no longer running on device, stop UI indicator
           if (!statusData.running) {
             setEnrolling(false);
-            if (statusData.status) {
-              toast.success('Fingerprint enrolled successfully!');
-              // Refresh enrolled fingers list
-              if (selectedEmployee) {
-                const fingers = await getFingerprints(selectedEmployee.id);
-                setEnrolledFingers(fingers);
-              }
-            }
           }
         } catch (error) {
           console.error('Status check failed', error);
         }
+      }, 5000);
+
+      // Verify if the active finger record has actually arrived (The real-time detection)
+      fingerInterval = setInterval(async () => {
+        try {
+          if (!selectedEmployee) return;
+          const fingers = await getFingerprints(selectedEmployee.id);
+          
+          // Check if target finger is now in the list
+          const targetIsSaved = fingers.some(
+            f => f.hand.toLowerCase() === selectedHand && 
+                 f.finger.toLowerCase() === selectedFinger
+          );
+
+          if (targetIsSaved) {
+            setEnrolledFingers(fingers); // Real-time UI update for the checkmarks
+            setEnrolling(false);
+            toast.success(`${selectedHand} ${selectedFinger} save success!`);
+            
+            // Clean up: explicitly tell device to stop enrollment session
+            try {
+              await stopEnrollment(selectedDevice.identifier);
+            } catch (e) {}
+          }
+        } catch (error) {
+          console.error('Finger verification failed', error);
+        }
       }, 3000);
     }
-    return () => clearInterval(interval);
-  }, [enrolling, selectedDevice, selectedEmployee, tipsoiPersonId]);
+    
+    return () => {
+      clearInterval(statusInterval);
+      clearInterval(fingerInterval);
+    };
+  }, [enrolling, selectedDevice, selectedEmployee, selectedHand, selectedFinger, tipsoiPersonId]);
 
   const handleRegisterAndEnroll = async () => {
     if (!selectedDevice || !selectedEmployee) {
