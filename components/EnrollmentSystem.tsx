@@ -21,9 +21,10 @@ import {
   stopEnrollment, 
   getEnrollmentStatus, 
   createPerson,
-  updateDeviceAllocation
+  updateDeviceAllocation,
+  getFingerprints
 } from '../services/api';
-import { Device, Employee, EnrollmentStatus } from '../types';
+import { Device, Employee, EnrollmentStatus, Fingerprint as FingerprintType } from '../types';
 import { toast } from 'sonner';
 
 const HANDS = [
@@ -45,6 +46,7 @@ export const EnrollmentSystem: React.FC = () => {
 
   const [selectedHand, setSelectedHand] = useState<'left' | 'right'>('right');
   const [selectedFinger, setSelectedFinger] = useState<string>('index');
+  const [enrolledFingers, setEnrolledFingers] = useState<FingerprintType[]>([]);
 
   const loadData = useCallback(async () => {
     try {
@@ -66,6 +68,23 @@ export const EnrollmentSystem: React.FC = () => {
     loadData();
   }, [loadData]);
 
+  // Fetch enrolled fingerprints when employee changes
+  useEffect(() => {
+    const fetchEnrolled = async () => {
+      if (!selectedEmployee) {
+        setEnrolledFingers([]);
+        return;
+      }
+      try {
+        const fingers = await getFingerprints(selectedEmployee.id);
+        setEnrolledFingers(fingers);
+      } catch (error) {
+        console.error('Failed to fetch fingerprints:', error);
+      }
+    };
+    fetchEnrolled();
+  }, [selectedEmployee]);
+
   const [tipsoiPersonId, setTipsoiPersonId] = useState<string | null>(null);
 
   // Polling for status when enrolling
@@ -85,6 +104,11 @@ export const EnrollmentSystem: React.FC = () => {
             setEnrolling(false);
             if (statusData.status) {
               toast.success('Fingerprint enrolled successfully!');
+              // Refresh enrolled fingers list
+              if (selectedEmployee) {
+                const fingers = await getFingerprints(selectedEmployee.id);
+                setEnrolledFingers(fingers);
+              }
             }
           }
         } catch (error) {
@@ -277,38 +301,57 @@ export const EnrollmentSystem: React.FC = () => {
               <div>
                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3 block">Hand Selection</label>
                 <div className="grid grid-cols-2 gap-2">
-                  {HANDS.map(hand => (
-                    <button
-                      key={hand.id}
-                      onClick={() => setSelectedHand(hand.id)}
-                      className={`py-3 px-4 rounded-xl border text-sm font-bold transition-all ${
-                        selectedHand === hand.id 
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-lg shadow-emerald-200' 
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                      }`}
-                    >
-                      {hand.name}
-                    </button>
-                  ))}
+                  {HANDS.map(hand => {
+                    const hasEnrolled = enrolledFingers.some(f => f.hand.toLowerCase() === hand.id);
+                    return (
+                      <button
+                        key={hand.id}
+                        onClick={() => setSelectedHand(hand.id)}
+                        className={`relative py-3 px-4 rounded-xl border text-sm font-bold transition-all ${
+                          selectedHand === hand.id 
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-lg shadow-emerald-200' 
+                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        }`}
+                      >
+                        {hand.name}
+                        {hasEnrolled && (
+                          <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border border-white"></span>
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
               <div>
                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3 block">Finger Choice</label>
                 <div className="grid grid-cols-3 gap-2">
-                  {FINGERS.map(finger => (
-                    <button
-                      key={finger}
-                      onClick={() => setSelectedFinger(finger)}
-                      className={`py-2 px-2 rounded-lg border text-xs font-bold capitalize transition-all ${
-                        selectedFinger === finger 
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-100' 
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                      }`}
-                    >
-                      {finger}
-                    </button>
-                  ))}
+                  {FINGERS.map(finger => {
+                    const isEnrolled = enrolledFingers.some(
+                      f => f.hand.toLowerCase() === selectedHand && f.finger.toLowerCase() === finger
+                    );
+                    return (
+                      <button
+                        key={finger}
+                        onClick={() => setSelectedFinger(finger)}
+                        className={`relative py-2 px-2 rounded-lg border text-xs font-bold capitalize transition-all ${
+                          selectedFinger === finger 
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-100' 
+                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        } ${isEnrolled ? 'border-emerald-500' : ''}`}
+                      >
+                        {finger}
+                        {isEnrolled && (
+                          <div className="absolute -top-1 -right-1 bg-emerald-500 rounded-full border border-white p-0.5">
+                            <CheckCircle2 className="h-2 w-2 text-white" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
