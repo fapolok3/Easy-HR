@@ -2,11 +2,15 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Card, Input, Button, Badge } from '../components/UI';
 import { getMobilePunches, fetchEmployees } from '../services/api';
 import { MobilePunch, Employee } from '../types';
-import { IconFilter, IconDownload, IconDevice, IconX, IconClock, IconUsers, IconCheckCircle, IconSearch, IconXCircle } from '../components/Icons';
+import { IconFilter, IconDownload, IconDevice, IconX, IconClock, IconUsers, IconCheckCircle, IconSearch, IconXCircle, IconChevronLeft } from '../components/Icons';
 import { motion, AnimatePresence } from 'motion/react';
 
 const MobilePunchReport = () => {
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [viewMode, setViewMode] = useState<'employees' | 'details'>('employees');
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
+  const [filterMode, setFilterMode] = useState<'daily' | 'monthly'>('daily');
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
   const [punches, setPunches] = useState<MobilePunch[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(false);
@@ -22,14 +26,20 @@ const MobilePunchReport = () => {
         fetchEmployees()
       ]);
       setEmployees(emps);
-      // Filter by date using local date components to avoid timezone shifting
+      
       const filtered = data.filter(p => {
         const d = new Date(p.timestamp);
         const y = d.getFullYear();
         const m = String(d.getMonth() + 1).padStart(2, '0');
         const day = String(d.getDate()).padStart(2, '0');
-        const localDate = `${y}-${m}-${day}`;
-        return localDate === date;
+        
+        if (filterMode === 'daily') {
+          const punchDate = `${y}-${m}-${day}`;
+          return punchDate === selectedDate;
+        } else {
+          const punchMonth = `${y}-${m}`;
+          return punchMonth === selectedMonth;
+        }
       });
       setPunches(filtered.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
     } catch (error) {
@@ -41,7 +51,40 @@ const MobilePunchReport = () => {
 
   useEffect(() => {
     loadData();
-  }, [date]);
+  }, [selectedDate, selectedMonth, filterMode]);
+
+  const handleDownloadExcel = () => {
+    if (filteredPunches.length === 0) return;
+
+    const headers = ['SL', 'Employee ID', 'Employee Name', 'Workplace', 'Type', 'Date', 'Time', 'Address', 'Latitude', 'Longitude'];
+    const csvContent = [
+      headers.join(','),
+      ...filteredPunches.map((p, i) => [
+        (i + 1),
+        p.employeeId,
+        `"${p.employeeName}"`,
+        `"${employees.find(e => e.id === p.employeeId)?.workplace || 'Main Office'}"`,
+        p.type,
+        new Date(p.timestamp).toLocaleDateString(),
+        new Date(p.timestamp).toLocaleTimeString(),
+        `"${p.address.replace(/"/g, '""')}"`,
+        p.latitude,
+        p.longitude
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    const filename = `Mobile_Punch_Report_${filterMode === 'daily' ? selectedDate : selectedMonth}.csv`;
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const stats = useMemo(() => {
     const total = punches.length;
@@ -60,21 +103,83 @@ const MobilePunchReport = () => {
     );
   }, [punches, searchTerm]);
 
+  const activeEmployees = useMemo(() => {
+    const employeeMap = new Map<string, { id: string, name: string, punchCount: number, lastPunch: string }>();
+    
+    filteredPunches.forEach(p => {
+      const existing = employeeMap.get(p.employeeId);
+      if (existing) {
+        existing.punchCount++;
+        if (new Date(p.timestamp) > new Date(existing.lastPunch)) {
+          existing.lastPunch = p.timestamp;
+        }
+      } else {
+        employeeMap.set(p.employeeId, {
+          id: p.employeeId,
+          name: p.employeeName,
+          punchCount: 1,
+          lastPunch: p.timestamp
+        });
+      }
+    });
+
+    return Array.from(employeeMap.values()).sort((a, b) => b.punchCount - a.punchCount);
+  }, [filteredPunches]);
+
+  const employeePunches = useMemo(() => {
+    if (!selectedEmployeeId) return [];
+    return filteredPunches.filter(p => p.employeeId === selectedEmployeeId);
+  }, [filteredPunches, selectedEmployeeId]);
+
   return (
     <div className="p-4 md:p-8 max-w-[1400px] mx-auto space-y-8 font-sans transition-all">
       {/* Header Section */}
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-2">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
+            {viewMode === 'details' && (
+              <Button 
+                variant="ghost" 
+                onClick={() => {
+                  setViewMode('employees');
+                  setSelectedEmployeeId(null);
+                }}
+                className="p-2 h-auto -ml-2"
+              >
+                <IconChevronLeft className="w-6 h-6" />
+              </Button>
+            )}
             <div className="p-2.5 bg-primary/10 rounded-xl">
               <IconDevice className="w-6 h-6 text-primary" />
             </div>
-            <h1 className="text-3xl font-black text-text uppercase tracking-tight leading-none">Mobile Punch Report</h1>
+            <h1 className="text-3xl font-black text-text uppercase tracking-tight leading-none">
+              {viewMode === 'employees' ? 'Mobile Punch Report' : 'Employee Detailed Punches'}
+            </h1>
           </div>
-          <p className="text-sm text-textMuted font-medium pl-1">Detailed tracking of outdoor employee movements and attendance.</p>
+          <p className="text-sm text-textMuted font-medium pl-1">
+            {viewMode === 'employees' 
+              ? 'Detailed tracking of outdoor employee movements and attendance.'
+              : `Viewing punches for ${activeEmployees.find(e => e.id === selectedEmployeeId)?.name || 'Employee'}`
+            }
+          </p>
         </div>
         
         <div className="flex flex-wrap items-center gap-3 bg-white p-2 rounded-2xl border border-border shadow-sm">
+          <div className="flex items-center bg-slate-50 p-1 rounded-xl">
+            <button 
+              onClick={() => setFilterMode('daily')}
+              className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${filterMode === 'daily' ? 'bg-white text-primary shadow-sm' : 'text-textMuted hover:text-text'}`}
+            >
+              Daily
+            </button>
+            <button 
+              onClick={() => setFilterMode('monthly')}
+              className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${filterMode === 'monthly' ? 'bg-white text-primary shadow-sm' : 'text-textMuted hover:text-text'}`}
+            >
+              Monthly
+            </button>
+          </div>
+
           <div className="relative flex-1 min-w-[200px]">
             <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-textMuted" />
             <input 
@@ -85,12 +190,28 @@ const MobilePunchReport = () => {
               className="w-full pl-9 pr-4 py-2 text-sm bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all outline-none font-medium"
             />
           </div>
-          <Input 
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-[160px] border-none bg-slate-50 rounded-xl text-sm font-bold h-10 px-3"
-          />
+          
+          {filterMode === 'daily' ? (
+            <Input 
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="w-[160px] border-none bg-slate-50 rounded-xl text-sm font-bold h-10 px-3"
+            />
+          ) : (
+            <Input 
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="w-[180px] border-none bg-slate-50 rounded-xl text-sm font-bold h-10 px-3"
+            />
+          )}
+
+          <Button onClick={handleDownloadExcel} className="bg-slate-900 text-white hover:bg-black rounded-xl px-4 h-10 font-black uppercase tracking-widest text-[10px] shadow-lg shadow-slate-200">
+            <IconDownload className="w-3.5 h-3.5 mr-2" />
+            Download Excel
+          </Button>
+
           <Button onClick={loadData} variant="secondary" className="rounded-xl px-4 h-10 bg-slate-100 hover:bg-slate-200 border-none text-primary font-bold">
             <IconFilter className="w-4 h-4 mr-2" />
             REFRESH
@@ -153,12 +274,22 @@ const MobilePunchReport = () => {
             <thead>
               <tr className="bg-slate-50">
                 <th className="px-6 py-4 text-[10px] font-black text-textMuted uppercase tracking-widest border-b border-border text-center w-16">SL</th>
-                <th className="px-6 py-4 text-[10px] font-black text-textMuted uppercase tracking-widest border-b border-border">Employee Details</th>
-                <th className="px-6 py-4 text-[10px] font-black text-textMuted uppercase tracking-widest border-b border-border">Workplace</th>
-                <th className="px-6 py-4 text-[10px] font-black text-textMuted uppercase tracking-widest border-b border-border text-center">Punch Action</th>
-                <th className="px-6 py-4 text-[10px] font-black text-textMuted uppercase tracking-widest border-b border-border text-center">Precise Time</th>
-                <th className="px-6 py-4 text-[10px] font-black text-textMuted uppercase tracking-widest border-b border-border">GPS Location & Address</th>
-                <th className="px-6 py-4 text-[10px] font-black text-textMuted uppercase tracking-widest border-b border-border text-right">Verification</th>
+                {viewMode === 'employees' ? (
+                  <>
+                    <th className="px-6 py-4 text-[10px] font-black text-textMuted uppercase tracking-widest border-b border-border">Employee Details</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-textMuted uppercase tracking-widest border-b border-border text-center">Total Punches</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-textMuted uppercase tracking-widest border-b border-border text-center">Last Punch At</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-textMuted uppercase tracking-widest border-b border-border text-right">Actions</th>
+                  </>
+                ) : (
+                  <>
+                    <th className="px-6 py-4 text-[10px] font-black text-textMuted uppercase tracking-widest border-b border-border">Punch Details</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-textMuted uppercase tracking-widest border-b border-border text-center">Action</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-textMuted uppercase tracking-widest border-b border-border text-center">Time</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-textMuted uppercase tracking-widest border-b border-border">Location</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-textMuted uppercase tracking-widest border-b border-border text-right">Map</th>
+                  </>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -171,7 +302,7 @@ const MobilePunchReport = () => {
                     </div>
                   </td>
                 </tr>
-              ) : filteredPunches.length === 0 ? (
+              ) : (viewMode === 'employees' ? activeEmployees.length : employeePunches.length) === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-24 text-center">
                     <div className="flex flex-col items-center gap-4 opacity-50">
@@ -180,15 +311,65 @@ const MobilePunchReport = () => {
                       </div>
                       <div className="space-y-1">
                         <p className="text-xl font-black text-text">No records found</p>
-                        <p className="text-sm text-textMuted font-medium max-w-xs mx-auto">We couldn't find any mobile punch records matching your criteria for this date.</p>
+                        <p className="text-sm text-textMuted font-medium max-w-xs mx-auto">We couldn't find any records matching your criteria for this view.</p>
                       </div>
                     </div>
                   </td>
                 </tr>
+              ) : viewMode === 'employees' ? (
+                activeEmployees.map((emp, index) => (
+                  <motion.tr 
+                    key={emp.id} 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="group hover:bg-slate-50/50 transition-all cursor-default"
+                  >
+                    <td className="px-6 py-4 text-center font-mono text-xs text-textMuted">
+                      {(index + 1).toString().padStart(2, '0')}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                          <span className="text-primary font-black text-xs">
+                            {emp.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-black text-text text-sm group-hover:text-primary transition-colors">{emp.name}</span>
+                          <span className="text-xs text-textMuted font-bold uppercase tracking-tight">{emp.id}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <Badge className="bg-indigo-50 text-indigo-600 border-none font-black">{emp.punchCount} Punches</Badge>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex flex-col items-center">
+                        <span className="font-black text-text text-sm">
+                          {new Date(emp.lastPunch).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <span className="text-[10px] font-bold text-textMuted uppercase mt-1">
+                          {new Date(emp.lastPunch).toLocaleDateString([], { day: 'numeric', month: 'short' })}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button 
+                        onClick={() => {
+                          setSelectedEmployeeId(emp.id);
+                          setViewMode('details');
+                        }}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-black hover:shadow-lg active:scale-95 transition-all outline-none"
+                      >
+                        View Details
+                      </button>
+                    </td>
+                  </motion.tr>
+                ))
               ) : (
-                filteredPunches.map((punch, index) => {
+                employeePunches.map((punch, index) => {
                   if (!punch) return null;
-                  const employee = employees.find(e => e.id === punch.employeeId);
                   return (
                     <motion.tr 
                       key={punch.id} 
@@ -201,22 +382,9 @@ const MobilePunchReport = () => {
                         {(index + 1).toString().padStart(2, '0')}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                            <span className="text-primary font-black text-xs">
-                              {punch.employeeName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                            </span>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="font-black text-text text-sm group-hover:text-primary transition-colors">{punch.employeeName}</span>
-                            <span className="text-xs text-textMuted font-bold uppercase tracking-tight">{punch.employeeId}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-lg border border-slate-200">
-                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
-                          <span className="text-xs font-bold text-slate-700 uppercase">{employee?.workplace || 'Main Office'}</span>
+                        <div className="flex flex-col">
+                          <span className="font-black text-text text-sm capitalize">{punch.type} Report</span>
+                          <span className="text-[10px] text-textMuted font-bold uppercase tracking-widest">{new Date(punch.timestamp).toLocaleDateString()}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4 text-center">
@@ -232,20 +400,12 @@ const MobilePunchReport = () => {
                           <span className="font-black text-text text-base leading-none">
                             {new Date(punch.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
-                          <span className="text-[10px] font-bold text-textMuted uppercase mt-1">
-                            {new Date(punch.timestamp).toLocaleTimeString([], { second: '2-digit' })} SEC
-                          </span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col gap-1 max-w-[250px]">
-                          <div className="flex items-start gap-2">
-                             <div className="p-1 bg-rose-50 rounded mt-0.5">
-                                <div className="w-1.5 h-1.5 bg-rose-500 rounded-full"></div>
-                             </div>
-                             <span className="text-xs font-bold text-text line-clamp-2 leading-snug">{punch.address}</span>
-                          </div>
-                          <span className="text-[10px] font-mono text-textMuted pl-5">
+                          <span className="text-xs font-bold text-text line-clamp-2 leading-snug">{punch.address}</span>
+                          <span className="text-[10px] font-mono text-textMuted">
                             {punch.latitude.toFixed(6)}, {punch.longitude.toFixed(6)}
                           </span>
                         </div>
@@ -256,9 +416,9 @@ const MobilePunchReport = () => {
                             setSelectedPunch(punch);
                             setShowMapModal(true);
                           }}
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/20 active:scale-95 transition-all outline-none"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-primary/90 hover:shadow-lg active:scale-95 transition-all outline-none"
                         >
-                          View Map
+                          Show Map
                         </button>
                       </td>
                     </motion.tr>
@@ -273,13 +433,16 @@ const MobilePunchReport = () => {
       {/* Footer / Export */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4 px-2 border-t border-slate-100">
         <p className="text-xs font-bold text-textMuted uppercase tracking-widest italic">
-          Showing {filteredPunches.length} records for {new Date(date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+          Showing {filteredPunches.length} records for {
+            filterMode === 'daily' 
+              ? new Date(selectedDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+              : new Date(selectedMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+          }
         </p>
         <div className="flex items-center gap-3">
-           <Button onClick={() => window.print()} className="bg-slate-900 text-white hover:bg-black rounded-xl px-6 py-2 font-black uppercase tracking-widest text-xs shadow-lg shadow-slate-200">
-            <IconDownload className="w-4 h-4 mr-2" />
-            Generate PDF
-          </Button>
+           <Button onClick={() => window.print()} className="bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-xl px-4 py-2 font-black uppercase tracking-widest text-[10px] hidden sm:flex">
+             Print View
+           </Button>
         </div>
       </div>
 
@@ -298,7 +461,7 @@ const MobilePunchReport = () => {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="w-full max-w-3xl bg-white overflow-hidden relative rounded-3xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] z-50"
+              className="w-full max-w-xl bg-white overflow-hidden relative rounded-3xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] z-50"
             >
               <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white">
                 <div className="flex items-center gap-4">
@@ -322,7 +485,7 @@ const MobilePunchReport = () => {
                 </button>
               </div>
               
-              <div className="h-[450px] w-full bg-slate-100 relative group">
+              <div className="h-[300px] w-full bg-slate-100 relative group">
                 <iframe
                   width="100%"
                   height="100%"
