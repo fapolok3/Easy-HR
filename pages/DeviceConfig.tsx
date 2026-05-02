@@ -8,7 +8,7 @@ import {
 import { 
   fetchDevices, fetchEmployees, updateDeviceAllocation, 
   getFingerprints, deleteFingerprints, startEnrollment, 
-  stopEnrollment, getEnrollmentStatus 
+  stopEnrollment, getEnrollmentStatus, updateEmployeeDevice
 } from '../services/api';
 import { Device, Employee, Fingerprint, EnrollmentStatus } from '../types';
 
@@ -74,10 +74,12 @@ const DeviceConfig = () => {
     setProcessing(employeeId);
     try {
       await updateDeviceAllocation(String(device.identifier), employeeId, action);
-      // Update local state (simulation since we don't have a join table yet, but let's assume it updates the user record)
-      // In a real app, this would update Supabase employees.zk_device_id
+      
+      const newDeviceId = action === 'allocate' ? id : undefined;
+      await updateEmployeeDevice(employeeId, newDeviceId);
+
       setEmployees(prev => prev.map(emp => 
-        emp.id === employeeId ? { ...emp, zkDeviceId: action === 'allocate' ? id : undefined } : emp
+        emp.id === employeeId ? { ...emp, zkDeviceId: newDeviceId } : emp
       ));
       setToast({
         message: `Successfully ${action === 'allocate' ? 'allocated' : 'revoked'} ${employees.find(e => e.id === employeeId)?.name}`,

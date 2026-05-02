@@ -557,6 +557,24 @@ export const saveLocalEmployee = async (employee: Employee) => {
   }
 };
 
+export const updateEmployeeDevice = async (employeeId: string, deviceId: string | undefined) => {
+  try {
+    if (!checkSupabase()) return;
+    const { error } = await supabase
+      .from('employees')
+      .update({ zk_device_id: deviceId })
+      .eq('id', employeeId);
+      
+    if (error) {
+      console.error('Error updating employee device allocation:', error);
+      throw error;
+    }
+  } catch (err) {
+    console.error('updateEmployeeDevice exception:', err);
+    throw err;
+  }
+};
+
 export const deleteLocalEmployee = async (id: string) => {
   try {
     if (!checkSupabase()) return;
@@ -1291,6 +1309,14 @@ export const bulkUpdateEmployees = async (employees: Employee[], updates: Partia
       .upsert(upsertData);
 
     if (error) throw error;
+    
+    // Sync rosters for all updated employees if shift was changed
+    if (updates.shift) {
+      for (const emp of employees) {
+        const updatedEmp = { ...emp, ...updates };
+        await syncShiftToAdvanceRoster(updatedEmp, updates.shift, updates.shiftEffectiveDate || '');
+      }
+    }
   } catch (err) {
     console.error('Error in bulk update:', err);
     throw err;
@@ -1534,5 +1560,50 @@ export const saveAdvanceRoster = async (roster: AdvanceRoster) => {
     if (error) console.error('Error saving advance roster:', error);
   } catch (err) {
     console.error(err);
+  }
+};
+
+export const syncShiftToAdvanceRoster = async (employee: Employee, shiftId: string, effectiveDate: string) => {
+  try {
+    if (!shiftId) return;
+    
+    // Get shift details to find off days
+    const orgSettings = await getOrgSettings();
+    const shift = orgSettings.shifts.find(s => s.id === shiftId || s.name === shiftId);
+    const finalShiftId = shift ? shift.id : shiftId;
+    
+    // Use effectiveDate or today
+    const start = effectiveDate ? new Date(effectiveDate) : new Date();
+    const month = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}`;
+    
+    // Get existing roster for the month
+    const rosters = await getAdvanceRoster(month);
+    let empRoster = rosters.find(r => r.employeeId === employee.id);
+    
+    const lastDay = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
+    const assignments: Record<string, string> = empRoster?.assignments || {};
+    
+    const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    
+    // Fill assignments from start date to end of month
+    for (let d = start.getDate(); d <= lastDay; d++) {
+      const date = new Date(start.getFullYear(), start.getMonth(), d);
+      const dateStr = `${month}-${String(d).padStart(2, '0')}`;
+      const dayName = DAYS[date.getDay()];
+      
+      const isOffDay = shift?.offDays?.includes(dayName);
+      assignments[dateStr] = isOffDay ? 'Off Day' : finalShiftId;
+    }
+    
+    const newRoster: AdvanceRoster = {
+      employeeId: employee.id,
+      employeeName: employee.name,
+      month: month,
+      assignments: assignments
+    };
+    
+    await saveAdvanceRoster(newRoster);
+  } catch (err) {
+    console.error('Error syncing shift to advance roster:', err);
   }
 };

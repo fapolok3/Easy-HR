@@ -22,7 +22,8 @@ import {
   getEnrollmentStatus, 
   createPerson,
   updateDeviceAllocation,
-  getFingerprints
+  getFingerprints,
+  updateEmployeeDevice
 } from '../services/api';
 import { Device, Employee, EnrollmentStatus, Fingerprint as FingerprintType } from '../types';
 import { toast } from 'sonner';
@@ -171,8 +172,9 @@ export const EnrollmentSystem: React.FC = () => {
 
       // Step 2: Allocate user to the specific device if needed
       try {
-        // Documentation Page 16: {{BASE URL}}/devices/{{device_identifier}}/allocations
         await updateDeviceAllocation(selectedDevice.identifier, selectedEmployee.id, 'allocate');
+        // Persist to Supabase
+        await updateEmployeeDevice(selectedEmployee.id, String(selectedDevice.id));
       } catch (err: any) {
         console.log('Allocation info:', err.message);
       }

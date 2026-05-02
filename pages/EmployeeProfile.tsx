@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Button, Input, Select, Badge, Modal } from '../components/UI';
 import { IconArrowLeft, IconTrash, IconCheckCircle, IconEdit, IconSave, IconCamera, IconUser } from '../components/Icons';
-import { fetchEmployees, saveLocalEmployee, deleteLocalEmployee, getOrgSettings, getCurrentSession, uploadEmployeeAvatar, deleteEmployeeAvatar } from '../services/api';
+import { fetchEmployees, saveLocalEmployee, deleteLocalEmployee, getOrgSettings, getCurrentSession, uploadEmployeeAvatar, deleteEmployeeAvatar, syncShiftToAdvanceRoster } from '../services/api';
 import { OrgSettings, Employee } from '../types';
 
 const EmployeeProfile = () => {
@@ -40,10 +40,16 @@ const EmployeeProfile = () => {
     loadData();
   }, [id]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (employee && formData) {
       const updatedEmployee = { ...employee, ...formData } as Employee;
-      saveLocalEmployee(updatedEmployee);
+      await saveLocalEmployee(updatedEmployee);
+      
+      // Sync to advance roster if shift is set and changed
+      if (updatedEmployee.shift && (updatedEmployee.shift !== employee.shift || updatedEmployee.shiftEffectiveDate !== employee.shiftEffectiveDate)) {
+        await syncShiftToAdvanceRoster(updatedEmployee, updatedEmployee.shift, updatedEmployee.shiftEffectiveDate || '');
+      }
+      
       setEmployee(updatedEmployee);
       setIsEditing(false);
     }

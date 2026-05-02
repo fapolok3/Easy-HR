@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Button, Input, Select } from '../components/UI';
 import { IconCheckCircle, IconX, IconUsers, IconSettings, IconCamera, IconUser, IconTrash } from '../components/Icons';
-import { saveLocalEmployee, getOrgSettings, checkGlobalEmailExists, uploadEmployeeAvatar } from '../services/api';
+import { saveLocalEmployee, getOrgSettings, checkGlobalEmailExists, uploadEmployeeAvatar, syncShiftToAdvanceRoster } from '../services/api';
 import { OrgSettings } from '../types';
 import { Employee } from '../types';
 
@@ -115,6 +115,11 @@ const CreateEmployee = () => {
     };
 
     await saveLocalEmployee(newEmployee);
+    
+    // Sync to advance roster if shift is set
+    if (newEmployee.shift) {
+      await syncShiftToAdvanceRoster(newEmployee, newEmployee.shift, newEmployee.shiftEffectiveDate || '');
+    }
     
     setLoading(false);
     setShowNotification(true);
