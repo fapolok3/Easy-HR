@@ -6,6 +6,7 @@ import {
 } from '../services/api';
 import { LeaveRequest } from '../types';
 import { IconCheckCircle, IconX, IconClock, IconCalendar } from '../components/Icons';
+import { toast } from 'sonner';
 
 const Approvals = () => {
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
@@ -24,6 +25,7 @@ const Approvals = () => {
     await updateLeaveRequestStatus(id, status);
     const data = await getLeaveRequests();
     setRequests(data);
+    toast.success(`Leave request ${status.toLowerCase()} successfully`);
   };
 
   if (isLoading) {

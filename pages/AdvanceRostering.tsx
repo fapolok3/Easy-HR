@@ -4,6 +4,7 @@ import { fetchEmployees, getOrgSettings, getAdvanceRoster, saveAdvanceRoster } f
 import { Employee, Shift, AdvanceRoster } from '../types';
 import { IconChevronLeft, IconChevronRight, IconSave, IconSearch, IconClock, IconCalendar } from '../components/Icons';
 import { motion } from 'motion/react';
+import { toast } from 'sonner';
 
 const AdvanceRostering = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -93,9 +94,11 @@ const AdvanceRostering = () => {
         await saveAdvanceRoster(roster);
       }
       setSaveStatus('success');
+      toast.success('Roster saved successfully!');
       setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (err) {
       console.error(err);
+      toast.error('Failed to save roster');
       setSaveStatus('idle');
     }
   };

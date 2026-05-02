@@ -8,6 +8,7 @@ import {
 } from '../services/api';
 import { LeaveRequest, OrgSettings, Employee } from '../types';
 import { IconCheckCircle, IconClock, IconFileText, IconCalendar } from '../components/Icons';
+import { toast } from 'sonner';
 
 const ApplyLeave = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -92,6 +93,7 @@ const ApplyLeave = () => {
     await saveLeaveRequest(newRequest);
     const updatedLeaves = await getLeaveRequests();
     setLeaveRequests(updatedLeaves);
+    toast.success('Leave application submitted successfully!');
     
     // Reset form
     setSelectedCategory('');

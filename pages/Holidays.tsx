@@ -3,6 +3,7 @@ import { Card, Input, Button, Modal } from '../components/UI';
 import { getOrgSettings, saveOrgSettings } from '../services/api';
 import { OrgSettings, Holiday } from '../types';
 import { IconTrash, IconEdit, IconPlus, IconCalendar } from '../components/Icons';
+import { toast } from 'sonner';
 
 const Holidays = () => {
   const [orgSettings, setOrgSettings] = useState<OrgSettings>({
@@ -62,6 +63,7 @@ const Holidays = () => {
     setOrgSettings(updated);
     saveOrgSettings(updated);
     setIsModalOpen(false);
+    toast.success(editingHoliday ? 'Holiday updated successfully!' : 'Holiday added successfully!');
   };
 
   const handleRemove = (id: string) => {
@@ -69,6 +71,7 @@ const Holidays = () => {
     const updated = { ...orgSettings, holidays: updatedHolidays };
     setOrgSettings(updated);
     saveOrgSettings(updated);
+    toast.success('Holiday removed');
   };
 
   return (

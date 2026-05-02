@@ -4,6 +4,7 @@ import { Card, Button, Input, Select } from '../components/UI';
 import { IconUsers, IconCheckCircle, IconArrowLeft } from '../components/Icons';
 import { fetchEmployees, getOrgSettings, bulkUpdateEmployees } from '../services/api';
 import { Employee, OrgSettings } from '../types';
+import { toast } from 'sonner';
 
 const BulkManageEmployees = () => {
   const location = useLocation();
@@ -73,11 +74,12 @@ const BulkManageEmployees = () => {
 
       if (Object.keys(updates).length > 0) {
         await bulkUpdateEmployees(targetEmployees, updates);
+        toast.success(`Successfully updated ${targetEmployees.length} employees`);
         navigate('/employees');
       }
     } catch (err) {
       console.error(err);
-      alert('Failed to update employees');
+      toast.error('Failed to update emlpoyees');
     } finally {
       setIsUpdating(false);
     }

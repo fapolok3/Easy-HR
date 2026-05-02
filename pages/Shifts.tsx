@@ -4,6 +4,7 @@ import { Card, Input, Button, Modal, Select as UISelect } from '../components/UI
 import { getOrgSettings, saveOrgSettings } from '../services/api';
 import { OrgSettings, Shift } from '../types';
 import { IconTrash, IconEdit, IconCheckCircle, IconClock } from '../components/Icons';
+import { toast } from 'sonner';
 
 const Shifts = () => {
   const navigate = useNavigate();
@@ -74,6 +75,7 @@ const Shifts = () => {
     setOrgSettings(updated);
     await saveOrgSettings(updated);
     setIsShiftModalOpen(false);
+    toast.success(editingShift ? 'Shift updated successfully!' : 'Shift created successfully!');
   };
 
   const handleRemoveShift = async (index: number) => {
@@ -81,6 +83,7 @@ const Shifts = () => {
     const updated = { ...orgSettings, shifts: updatedShifts };
     setOrgSettings(updated);
     await saveOrgSettings(updated);
+    toast.success('Shift removed');
   };
 
   return (

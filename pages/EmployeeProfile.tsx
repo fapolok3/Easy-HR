@@ -4,6 +4,7 @@ import { Card, Button, Input, Select, Badge, Modal } from '../components/UI';
 import { IconArrowLeft, IconTrash, IconCheckCircle, IconEdit, IconSave, IconCamera, IconUser } from '../components/Icons';
 import { fetchEmployees, saveLocalEmployee, deleteLocalEmployee, getOrgSettings, getCurrentSession, uploadEmployeeAvatar, deleteEmployeeAvatar, syncShiftToAdvanceRoster } from '../services/api';
 import { OrgSettings, Employee } from '../types';
+import { toast } from 'sonner';
 
 const EmployeeProfile = () => {
   const { id } = useParams<{ id: string }>();
@@ -52,38 +53,43 @@ const EmployeeProfile = () => {
       
       setEmployee(updatedEmployee);
       setIsEditing(false);
+      toast.success('Employee profile updated successfully!');
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (id) {
-      deleteLocalEmployee(id);
+      await deleteLocalEmployee(id);
+      toast.success('Employee deleted successfully');
       navigate('/employees');
     }
   };
 
-  const updateStatus = (status: Employee['status']) => {
+  const updateStatus = async (status: Employee['status']) => {
     if (employee) {
       const updated = { ...employee, status };
-      saveLocalEmployee(updated);
+      await saveLocalEmployee(updated);
       setEmployee(updated);
       setFormData(prev => ({ ...prev, status }));
+      toast.success(`Employee status updated to ${status}`);
     }
   };
 
-  const toggleAdmin = () => {
+  const toggleAdmin = async () => {
     if (employee) {
       const updated = { ...employee, isAdmin: !employee.isAdmin };
-      saveLocalEmployee(updated);
+      await saveLocalEmployee(updated);
       setEmployee(updated);
+      toast.success(updated.isAdmin ? 'Admin privileges granted' : 'Admin privileges revoked');
     }
   };
 
-  const toggleLineManager = () => {
+  const toggleLineManager = async () => {
     if (employee) {
       const updated = { ...employee, isLineManager: !employee.isLineManager };
-      saveLocalEmployee(updated);
+      await saveLocalEmployee(updated);
       setEmployee(updated);
+      toast.success(updated.isLineManager ? 'Set as line manager' : 'Line manager status removed');
     }
   };
 
@@ -104,9 +110,10 @@ const EmployeeProfile = () => {
           await saveLocalEmployee(updatedEmployee);
           setEmployee(updatedEmployee);
           setFormData(prev => ({ ...prev, avatarUrl: publicUrl }));
+          toast.success('Profile picture updated!');
         }
       } catch (err: any) {
-        alert(err.message || 'Failed to upload image');
+        toast.error(err.message || 'Failed to upload image');
       } finally {
         setIsUploading(false);
       }
@@ -123,8 +130,10 @@ const EmployeeProfile = () => {
           await saveLocalEmployee(updatedEmployee);
           setEmployee(updatedEmployee);
           setFormData(prev => ({ ...prev, avatarUrl: '' }));
+          toast.success('Profile picture removed');
         } catch (err) {
           console.error(err);
+          toast.error('Failed to remove profile picture');
         } finally {
           setIsUploading(false);
         }
