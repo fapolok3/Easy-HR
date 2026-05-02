@@ -134,7 +134,7 @@ const MobilePunchReport = () => {
   return (
     <div className="p-4 md:p-8 max-w-[1400px] mx-auto space-y-8 font-sans transition-all">
       {/* Header Section */}
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-2">
+      <div className="space-y-6 pb-2">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
             {viewMode === 'details' && (
@@ -152,11 +152,11 @@ const MobilePunchReport = () => {
             <div className="p-2.5 bg-primary/10 rounded-xl">
               <IconDevice className="w-6 h-6 text-primary" />
             </div>
-            <h1 className="text-3xl font-black text-text uppercase tracking-tight leading-none">
+            <h1 className="text-xl font-black text-text uppercase tracking-tight leading-none">
               {viewMode === 'employees' ? 'Mobile Punch Report' : 'Employee Detailed Punches'}
             </h1>
           </div>
-          <p className="text-sm text-textMuted font-medium pl-1">
+          <p className="text-xs text-textMuted font-medium pl-1">
             {viewMode === 'employees' 
               ? 'Detailed tracking of outdoor employee movements and attendance.'
               : `Viewing punches for ${activeEmployees.find(e => e.id === selectedEmployeeId)?.name || 'Employee'}`
@@ -164,8 +164,8 @@ const MobilePunchReport = () => {
           </p>
         </div>
         
-        <div className="flex flex-wrap items-center gap-3 bg-white p-2 rounded-2xl border border-border shadow-sm">
-          <div className="flex items-center bg-slate-50 p-1 rounded-xl">
+        <div className="flex flex-wrap items-center gap-3 bg-surface p-4 rounded-xl shadow-sm border border-border relative z-40">
+          <div className="flex items-center bg-slate-50 p-1 rounded-xl border border-border">
             <button 
               onClick={() => setFilterMode('daily')}
               className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${filterMode === 'daily' ? 'bg-white text-primary shadow-sm' : 'text-textMuted hover:text-text'}`}
@@ -181,36 +181,39 @@ const MobilePunchReport = () => {
           </div>
 
           <div className="relative flex-1 min-w-[200px]">
-            <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-textMuted" />
             <input 
-              type="text"
-              placeholder="Search employee or location..."
+              type="text" 
+              placeholder="Search employee or location..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all outline-none font-medium"
+              className="w-full bg-surface border border-border rounded-xl py-2 pl-3 pr-10 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary h-10 font-medium"
             />
+            <IconSearch className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-textMuted" />
           </div>
           
           {filterMode === 'daily' ? (
-            <Input 
+            <input 
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-[160px] border-none bg-slate-50 rounded-xl text-sm font-bold h-10 px-3"
+              className="w-[160px] border border-border bg-surface rounded-xl text-sm font-bold h-10 px-3 focus:outline-none focus:ring-1 focus:ring-primary"
             />
           ) : (
-            <Input 
+            <input 
               type="month"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="w-[180px] border-none bg-slate-50 rounded-xl text-sm font-bold h-10 px-3"
+              className="w-[180px] border border-border bg-surface rounded-xl text-sm font-bold h-10 px-3 focus:outline-none focus:ring-1 focus:ring-primary"
             />
           )}
 
-          <Button onClick={handleDownloadExcel} className="bg-slate-900 text-white hover:bg-black rounded-xl px-4 h-10 font-black uppercase tracking-widest text-[10px] shadow-lg shadow-slate-200">
-            <IconDownload className="w-3.5 h-3.5 mr-2" />
-            Download Excel
-          </Button>
+          <button 
+            onClick={handleDownloadExcel} 
+            className="flex items-center justify-center gap-2 bg-text text-white px-5 h-10 rounded-xl text-xs font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 active:scale-95 w-full sm:w-auto uppercase tracking-widest"
+          >
+            <IconDownload className="w-4 h-4 text-primary" />
+            <span>Export Excel</span>
+          </button>
 
           <Button onClick={loadData} variant="secondary" className="rounded-xl px-4 h-10 bg-slate-100 hover:bg-slate-200 border-none text-primary font-bold">
             <IconFilter className="w-4 h-4 mr-2" />
@@ -225,7 +228,7 @@ const MobilePunchReport = () => {
           <Card className="p-5 flex items-center justify-between border-l-4 border-l-primary hover:shadow-md transition-shadow bg-white rounded-2xl shadow-sm">
             <div>
               <p className="text-[10px] font-black text-textMuted uppercase tracking-widest mb-1">Total Punches</p>
-              <h3 className="text-2xl font-black text-text leading-none">{stats.total}</h3>
+              <h3 className="text-xl font-black text-text leading-none">{stats.total}</h3>
             </div>
             <div className="w-12 h-12 bg-primary/5 rounded-full flex items-center justify-center">
               <IconClock className="w-6 h-6 text-primary" />
@@ -236,7 +239,7 @@ const MobilePunchReport = () => {
           <Card className="p-5 flex items-center justify-between border-l-4 border-l-indigo-500 hover:shadow-md transition-shadow bg-white rounded-2xl shadow-sm">
             <div>
               <p className="text-[10px] font-black text-textMuted uppercase tracking-widest mb-1">Active Employees</p>
-              <h3 className="text-2xl font-black text-text leading-none">{stats.uniqueEmps}</h3>
+              <h3 className="text-xl font-black text-text leading-none">{stats.uniqueEmps}</h3>
             </div>
             <div className="w-12 h-12 bg-indigo-500/5 rounded-full flex items-center justify-center">
               <IconUsers className="w-6 h-6 text-indigo-500" />
@@ -247,7 +250,7 @@ const MobilePunchReport = () => {
           <Card className="p-5 flex items-center justify-between border-l-4 border-l-emerald-500 hover:shadow-md transition-shadow bg-white rounded-2xl shadow-sm">
             <div>
               <p className="text-[10px] font-black text-textMuted uppercase tracking-widest mb-1">Punch In</p>
-              <h3 className="text-2xl font-black text-text leading-none">{stats.ins}</h3>
+              <h3 className="text-xl font-black text-text leading-none">{stats.ins}</h3>
             </div>
             <div className="w-12 h-12 bg-emerald-500/5 rounded-full flex items-center justify-center">
               <IconCheckCircle className="w-6 h-6 text-emerald-500" />
@@ -258,7 +261,7 @@ const MobilePunchReport = () => {
           <Card className="p-5 flex items-center justify-between border-l-4 border-l-rose-500 hover:shadow-md transition-shadow bg-white rounded-2xl shadow-sm">
             <div>
               <p className="text-[10px] font-black text-textMuted uppercase tracking-widest mb-1">Punch Out</p>
-              <h3 className="text-2xl font-black text-text leading-none">{stats.outs}</h3>
+              <h3 className="text-xl font-black text-text leading-none">{stats.outs}</h3>
             </div>
             <div className="w-12 h-12 bg-rose-500/5 rounded-full flex items-center justify-center">
               <IconXCircle className="w-6 h-6 text-rose-500" />
@@ -336,7 +339,7 @@ const MobilePunchReport = () => {
                           </span>
                         </div>
                         <div className="flex flex-col">
-                          <span className="font-black text-text text-sm group-hover:text-primary transition-colors">{emp.name}</span>
+                          <span className="font-black text-text text-xs group-hover:text-primary transition-colors">{emp.name}</span>
                           <span className="text-xs text-textMuted font-bold uppercase tracking-tight">{emp.id}</span>
                         </div>
                       </div>
@@ -346,7 +349,7 @@ const MobilePunchReport = () => {
                     </td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex flex-col items-center">
-                        <span className="font-black text-text text-sm">
+                        <span className="font-black text-text text-xs">
                           {new Date(emp.lastPunch).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                         <span className="text-[10px] font-bold text-textMuted uppercase mt-1">
@@ -383,7 +386,7 @@ const MobilePunchReport = () => {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col">
-                          <span className="font-black text-text text-sm capitalize">{punch.type} Report</span>
+                          <span className="font-black text-text text-xs capitalize">{punch.type} Report</span>
                           <span className="text-[10px] text-textMuted font-bold uppercase tracking-widest">{new Date(punch.timestamp).toLocaleDateString()}</span>
                         </div>
                       </td>
@@ -397,7 +400,7 @@ const MobilePunchReport = () => {
                       </td>
                       <td className="px-6 py-4 text-center">
                         <div className="flex flex-col items-center">
-                          <span className="font-black text-text text-base leading-none">
+                          <span className="font-black text-text text-sm leading-none">
                             {new Date(punch.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
