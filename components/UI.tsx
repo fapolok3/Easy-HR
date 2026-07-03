@@ -69,6 +69,8 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   onFocus?: React.FocusEventHandler<HTMLInputElement>;
   required?: boolean;
   disabled?: boolean;
+  min?: string | number;
+  max?: string | number;
 }
 
 export const Input = ({ label, error, className, ...props }: InputProps) => (

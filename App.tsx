@@ -23,9 +23,10 @@ import AdvanceRostering from './pages/AdvanceRostering';
 import DeviceConfig from './pages/DeviceConfig';
 import Login from './pages/Login';
 import AdminPanel from './pages/AdminPanel';
+import Billing from './pages/Billing';
 import { EnrollmentSystem } from './components/EnrollmentSystem';
 import { Toaster } from 'sonner';
-import { getCurrentSession, setCurrentSession, getCompanyById, checkSupabase } from './services/api';
+import { getCurrentSession, setCurrentSession, getCompanyById, checkSupabase, getCompanyBilling, getCompanyBillingStatus } from './services/api';
 import { AuthSession } from './types';
 import { IconBell, IconSearch, IconMenu, IconX, IconUser, IconAlertCircle } from './components/Icons';
 import { Modal, Button } from './components/UI';
@@ -86,6 +87,46 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
   const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
   const navigate = useNavigate();
 
+  const [billing, setBilling] = useState<any>(null);
+  const [showBillingReminder, setShowBillingReminder] = useState(false);
+
+  useEffect(() => {
+    const checkBillingStatus = async () => {
+      if (session && !session.isSuperAdmin && session.companyId) {
+        try {
+          const { getCompanyBilling, getCompanyBillingStatus, getCompanyById } = await import('./services/api');
+          const comp = await getCompanyById(session.companyId);
+          if (comp) {
+            const bill = await getCompanyBilling(session.companyId);
+            setBilling(bill);
+            const status = getCompanyBillingStatus(comp.createdAt, bill);
+            
+            const today = new Date();
+            const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+            const currentDay = today.getDate();
+            const cutoff = bill.cutoffDay ?? 10;
+            
+            // Check if current month is due and if today is between day 1 and cutoffDay (inclusive)
+            const isCurrentMonthUnpaid = status.dueMonths.includes(currentMonthStr);
+            if (isCurrentMonthUnpaid && currentDay >= 1 && currentDay <= cutoff && !bill.manualOverride) {
+              setShowBillingReminder(true);
+            } else {
+              setShowBillingReminder(false);
+            }
+          }
+        } catch (e) {
+          console.error('Error loading billing reminder inside Layout:', e);
+        }
+      } else {
+        setShowBillingReminder(false);
+      }
+    };
+
+    checkBillingStatus();
+    const interval = setInterval(checkBillingStatus, 15000); // Check status every 15 seconds
+    return () => clearInterval(interval);
+  }, [session]);
+
   useEffect(() => {
     const loadEmployees = async () => {
       if (session) {
@@ -115,6 +156,20 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
       )}
 
       <div className={`${isSidebarCollapsed ? 'ml-0 lg:ml-20' : 'ml-0 lg:ml-64'} flex-1 flex flex-col min-h-screen transition-all duration-300`}>
+        {/* Subscription Due Warning Banner */}
+        {showBillingReminder && (
+          <div className="bg-gradient-to-r from-amber-600 via-amber-700 to-red-600 text-white text-[11px] font-black uppercase tracking-wider px-4 py-2.5 text-center animate-in slide-in-from-top duration-300 flex items-center justify-center gap-2 border-b border-amber-500 shadow-sm shrink-0 z-50">
+            <IconAlertCircle className="w-4 h-4 shrink-0 animate-bounce" />
+            <span>Reminder: Monthly subscription is due. Please clear payment by the {billing?.cutoffDay ?? 10}th of this month to avoid portal lock/suspension.</span>
+            <button 
+              onClick={() => navigate('/billing')} 
+              className="ml-3 h-5.5 text-[9px] font-black uppercase py-0.5 px-3 bg-white text-amber-900 rounded-md hover:bg-amber-50 transition-colors shadow-sm"
+            >
+              Pay Now
+            </button>
+          </div>
+        )}
+
         {/* Top Header */}
         <header className="h-16 bg-surface/80 backdrop-blur-md border-b border-border sticky top-0 z-50 px-4 md:px-8 flex items-center justify-between font-bold">
           <div className="flex items-center gap-2 md:gap-4 text-textMuted text-sm ">
@@ -301,6 +356,7 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
 
 const App = () => {
   const [session, setSession] = useState<AuthSession | null>(getCurrentSession());
+  const [isLocked, setIsLocked] = useState(false);
   const isSupabaseReady = checkSupabase();
 
   const login = (newSession: AuthSession) => {
@@ -311,7 +367,32 @@ const App = () => {
   const logout = () => {
     setCurrentSession(null);
     setSession(null);
+    setIsLocked(false);
   };
+
+  useEffect(() => {
+    const checkLockStatus = async () => {
+      if (session && !session.isSuperAdmin && session.companyId) {
+        try {
+          const comp = await getCompanyById(session.companyId);
+          if (comp) {
+            const billing = await getCompanyBilling(session.companyId);
+            const status = getCompanyBillingStatus(comp.createdAt, billing);
+            setIsLocked(status.isLocked);
+          }
+        } catch (e) {
+          console.error('Error verifying billing status:', e);
+        }
+      } else {
+        setIsLocked(false);
+      }
+    };
+    
+    checkLockStatus();
+    // Re-verify billing status every 15 seconds
+    const timer = setInterval(checkLockStatus, 15000);
+    return () => clearInterval(timer);
+  }, [session]);
 
   return (
     <SessionContext.Provider value={{ session, login, logout }}>
@@ -359,37 +440,50 @@ const App = () => {
       <Routes>
       {/* Public Routes */}
       <Route path="/login" element={<Login />} />
-      <Route path="/admin" element={session?.isSuperAdmin ? <Layout><AdminPanel /></Layout> : <Navigate to="/login" replace />} />
       
       {session?.isSuperAdmin ? (
         <>
-          <Route path="*" element={<Navigate to="/admin" replace />} />
+          <Route path="/admin" element={<Navigate to="/admin/companies" replace />} />
+          <Route path="/admin/companies" element={<Layout><AdminPanel activeTab="companies" /></Layout>} />
+          <Route path="/admin/pending-payments" element={<Layout><AdminPanel activeTab="pending-payments" /></Layout>} />
+          <Route path="/admin/locked-portals" element={<Layout><AdminPanel activeTab="locked-portals" /></Layout>} />
+          <Route path="/admin/active-portals" element={<Layout><AdminPanel activeTab="active-portals" /></Layout>} />
+          <Route path="/admin/billing-settings" element={<Layout><AdminPanel activeTab="billing-settings" /></Layout>} />
+          <Route path="*" element={<Navigate to="/admin/companies" replace />} />
         </>
       ) : session ? (
-        <>
-          <Route path="/" element={<Layout><Dashboard /></Layout>} />
-          <Route path="/employees" element={<Layout><Employees /></Layout>} />
-          <Route path="/employees/create" element={<Layout><CreateEmployee /></Layout>} />
-          <Route path="/employees/bulk" element={<Layout><BulkManageEmployees /></Layout>} />
-          <Route path="/employees/:id" element={<Layout><EmployeeProfile /></Layout>} />
-          <Route path="/attendance" element={<Layout><Attendance /></Layout>} />
-          <Route path="/attendance/individual" element={<Layout><IndividualAttendanceReport /></Layout>} />
-          <Route path="/attendance/late" element={<Layout><LateReport /></Layout>} />
-          <Route path="/attendance/absent" element={<Layout><AbsentReport /></Layout>} />
-          <Route path="/attendance/mobile-punch" element={<Layout><MobilePunch /></Layout>} />
-          <Route path="/attendance/mobile-report" element={<Layout><MobilePunchReport /></Layout>} />
-          <Route path="/holidays" element={<Layout><Holidays /></Layout>} />
-          <Route path="/devices" element={<Layout><Devices /></Layout>} />
-          <Route path="/devices/config/:id" element={<Layout><DeviceConfig /></Layout>} />
-          <Route path="/settings" element={<Layout><Settings /></Layout>} />
-          <Route path="/shifts" element={<Layout><Shifts /></Layout>} />
-          <Route path="/advance-rostering" element={<Layout><AdvanceRostering /></Layout>} />
-          <Route path="/leave" element={<Layout><Leave /></Layout>} />
-          <Route path="/apply-leave" element={<Layout><ApplyLeave /></Layout>} />
-          <Route path="/approvals" element={<Layout><Approvals /></Layout>} />
-          <Route path="/enrollment" element={<Layout><EnrollmentSystem /></Layout>} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </>
+        isLocked ? (
+          <>
+            <Route path="/billing" element={<Billing />} />
+            <Route path="*" element={<Navigate to="/billing" replace />} />
+          </>
+        ) : (
+          <>
+            <Route path="/" element={<Layout><Dashboard /></Layout>} />
+            <Route path="/billing" element={<Layout><Billing /></Layout>} />
+            <Route path="/employees" element={<Layout><Employees /></Layout>} />
+            <Route path="/employees/create" element={<Layout><CreateEmployee /></Layout>} />
+            <Route path="/employees/bulk" element={<Layout><BulkManageEmployees /></Layout>} />
+            <Route path="/employees/:id" element={<Layout><EmployeeProfile /></Layout>} />
+            <Route path="/attendance" element={<Layout><Attendance /></Layout>} />
+            <Route path="/attendance/individual" element={<Layout><IndividualAttendanceReport /></Layout>} />
+            <Route path="/attendance/late" element={<Layout><LateReport /></Layout>} />
+            <Route path="/attendance/absent" element={<Layout><AbsentReport /></Layout>} />
+            <Route path="/attendance/mobile-punch" element={<Layout><MobilePunch /></Layout>} />
+            <Route path="/attendance/mobile-report" element={<Layout><MobilePunchReport /></Layout>} />
+            <Route path="/holidays" element={<Layout><Holidays /></Layout>} />
+            <Route path="/devices" element={<Layout><Devices /></Layout>} />
+            <Route path="/devices/config/:id" element={<Layout><DeviceConfig /></Layout>} />
+            <Route path="/settings" element={<Layout><Settings /></Layout>} />
+            <Route path="/shifts" element={<Layout><Shifts /></Layout>} />
+            <Route path="/advance-rostering" element={<Layout><AdvanceRostering /></Layout>} />
+            <Route path="/leave" element={<Layout><Leave /></Layout>} />
+            <Route path="/apply-leave" element={<Layout><ApplyLeave /></Layout>} />
+            <Route path="/approvals" element={<Layout><Approvals /></Layout>} />
+            <Route path="/enrollment" element={<Layout><EnrollmentSystem /></Layout>} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </>
+        )
       ) : (
         <Route path="*" element={<Navigate to="/login" replace />} />
       )}

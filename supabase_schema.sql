@@ -97,7 +97,18 @@ CREATE TABLE IF NOT EXISTS advance_roster (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 8. Security: Enable Row Level Security (RLS)
+-- 8. Create Company Billing table
+CREATE TABLE IF NOT EXISTS company_billing (
+  company_id TEXT PRIMARY KEY REFERENCES companies(id) ON DELETE CASCADE,
+  cutoff_day INTEGER DEFAULT 10,
+  per_month_bill INTEGER DEFAULT 2000,
+  bkash_number TEXT DEFAULT '01787654321',
+  manual_override BOOLEAN DEFAULT FALSE,
+  payments JSONB DEFAULT '[]',
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 9. Security: Enable Row Level Security (RLS)
 -- If you want to enable security, run these one by one:
 -- ALTER TABLE companies ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE org_settings ENABLE ROW LEVEL SECURITY;
@@ -106,6 +117,7 @@ CREATE TABLE IF NOT EXISTS advance_roster (
 -- ALTER TABLE mobile_punches ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE api_config ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE advance_roster ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE company_billing ENABLE ROW LEVEL SECURITY;
 
 -- IMPORTANT: If you enable RLS, you MUST add policies to allow access. 
 -- Since this app doesn't use Supabase Auth yet, you can add "permissive" policies for testing:
@@ -116,3 +128,4 @@ CREATE TABLE IF NOT EXISTS advance_roster (
 -- CREATE POLICY "public_access" ON leave_requests FOR ALL USING (true);
 -- CREATE POLICY "public_access" ON mobile_punches FOR ALL USING (true);
 -- CREATE POLICY "public_access" ON advance_roster FOR ALL USING (true);
+-- CREATE POLICY "public_access" ON company_billing FOR ALL USING (true);

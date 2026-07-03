@@ -209,3 +209,22 @@ export interface AdvanceRoster {
   month: string; // YYYY-MM
   assignments: Record<string, string>; // date (YYYY-MM-DD) -> shiftId
 }
+
+export interface BillingPayment {
+  id: string;
+  month: string; // YYYY-MM
+  amount: number;
+  trxId: string;
+  timestamp: string;
+  status: 'pending' | 'approved' | 'rejected';
+}
+
+export interface CompanyBilling {
+  companyId: string;
+  cutoffDay: number;
+  perMonthBill: number;
+  bkashNumber: string;
+  manualOverride: boolean;
+  payments: BillingPayment[];
+}
+

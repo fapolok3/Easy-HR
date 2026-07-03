@@ -1,4 +1,4 @@
-import { ApiConfig, Employee, AttendanceRecord, Device, AttendanceApiResponse, Company, AuthSession, OrgSettings, LeaveRequest, MobilePunch, Shift, Holiday, LeavePolicy, Fingerprint, EnrollmentStatus, AdvanceRoster } from '../types';
+import { ApiConfig, Employee, AttendanceRecord, Device, AttendanceApiResponse, Company, AuthSession, OrgSettings, LeaveRequest, MobilePunch, Shift, Holiday, LeavePolicy, Fingerprint, EnrollmentStatus, AdvanceRoster, CompanyBilling, BillingPayment } from '../types';
 import { supabase } from './supabaseClient';
 
 export const checkSupabase = () => {
@@ -1607,3 +1607,391 @@ export const syncShiftToAdvanceRoster = async (employee: Employee, shiftId: stri
     console.error('Error syncing shift to advance roster:', err);
   }
 };
+
+// --- SAAS SUBSCRIPTION & BILLING SYSTEM ---
+
+export const DEFAULT_BKASH_NUMBER = '01787654321';
+export const DEFAULT_PER_MONTH_BILL = 2000;
+export const DEFAULT_CUTOFF_DAY = 10;
+
+// Fallback database handlers using the advance_roster table
+const getCompanyBillingFromFallback = async (companyId: string, globalBkash: string): Promise<CompanyBilling | null> => {
+  try {
+    const fallbackId = `billing_fallback_${companyId}`;
+    const { data, error } = await supabase
+      .from('advance_roster')
+      .select('*')
+      .eq('id', fallbackId)
+      .maybeSingle();
+      
+    if (!error && data && data.assignments) {
+      const b = data.assignments;
+      return {
+        companyId,
+        cutoffDay: b.cutoffDay ?? DEFAULT_CUTOFF_DAY,
+        perMonthBill: b.perMonthBill ?? DEFAULT_PER_MONTH_BILL,
+        bkashNumber: b.bkashNumber || globalBkash,
+        manualOverride: !!b.manualOverride,
+        payments: Array.isArray(b.payments) ? b.payments : []
+      };
+    }
+  } catch (err) {
+    console.error('Error in getCompanyBillingFromFallback:', err);
+  }
+  return null;
+};
+
+const saveCompanyBillingToFallback = async (billing: CompanyBilling): Promise<void> => {
+  try {
+    const fallbackId = `billing_fallback_${billing.companyId}`;
+    await supabase.from('advance_roster').upsert({
+      id: fallbackId,
+      company_id: billing.companyId,
+      employee_id: null,
+      employee_name: 'BILLING_SYSTEM',
+      month: 'BILLING_SYSTEM',
+      assignments: {
+        cutoffDay: billing.cutoffDay,
+        perMonthBill: billing.perMonthBill,
+        bkashNumber: billing.bkashNumber,
+        manualOverride: billing.manualOverride,
+        payments: billing.payments
+      }
+    });
+  } catch (err) {
+    console.error('Error in saveCompanyBillingToFallback:', err);
+  }
+};
+
+const getAllBillingsFromFallback = async (globalBkash: string): Promise<CompanyBilling[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('advance_roster')
+      .select('*')
+      .eq('month', 'BILLING_SYSTEM');
+      
+    if (!error && data) {
+      return data.map(item => {
+        const b = item.assignments || {};
+        return {
+          companyId: item.company_id,
+          cutoffDay: b.cutoffDay ?? DEFAULT_CUTOFF_DAY,
+          perMonthBill: b.perMonthBill ?? DEFAULT_PER_MONTH_BILL,
+          bkashNumber: b.bkashNumber || globalBkash,
+          manualOverride: !!b.manualOverride,
+          payments: Array.isArray(b.payments) ? b.payments : []
+        };
+      });
+    }
+  } catch (err) {
+    console.error('Error in getAllBillingsFromFallback:', err);
+  }
+  return [];
+};
+
+export const getCompanyBilling = async (companyId: string): Promise<CompanyBilling> => {
+  const localKey = `nexushrm_billing_${companyId}`;
+  const globalBkash = getGlobalBkashNumber();
+  
+  // 1. Try fetching from Supabase company_billing table
+  try {
+    if (checkSupabase()) {
+      const { data, error } = await supabase
+        .from('company_billing')
+        .select('*')
+        .eq('company_id', companyId)
+        .maybeSingle();
+
+      if (!error && data) {
+        const billing: CompanyBilling = {
+          companyId: data.company_id,
+          cutoffDay: data.cutoff_day ?? DEFAULT_CUTOFF_DAY,
+          perMonthBill: data.per_month_bill ?? DEFAULT_PER_MONTH_BILL,
+          bkashNumber: data.bkash_number || globalBkash,
+          manualOverride: !!data.manual_override,
+          payments: Array.isArray(data.payments) ? data.payments : []
+        };
+        // Sync to cache
+        localStorage.setItem(localKey, JSON.stringify(billing));
+        return billing;
+      }
+
+      // If there is an error (e.g., missing table / PGRST205), try the database fallback!
+      if (error) {
+        const fallbackBilling = await getCompanyBillingFromFallback(companyId, globalBkash);
+        if (fallbackBilling) {
+          localStorage.setItem(localKey, JSON.stringify(fallbackBilling));
+          return fallbackBilling;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Error fetching billing from database, falling back to cache:', err);
+  }
+
+  // 2. Fallback to LocalStorage cache
+  const cached = localStorage.getItem(localKey);
+  if (cached) {
+    try {
+      const parsed = JSON.parse(cached);
+      if (parsed && !parsed.bkashNumber) {
+        parsed.bkashNumber = globalBkash;
+      }
+      return parsed;
+    } catch (e) {
+      console.error('Error parsing cached billing info:', e);
+    }
+  }
+
+  // 3. If neither exists, return default state
+  const defaultBilling: CompanyBilling = {
+    companyId,
+    cutoffDay: DEFAULT_CUTOFF_DAY,
+    perMonthBill: DEFAULT_PER_MONTH_BILL,
+    bkashNumber: globalBkash,
+    manualOverride: false,
+    payments: []
+  };
+  return defaultBilling;
+};
+
+export const saveCompanyBilling = async (billing: CompanyBilling): Promise<void> => {
+  const localKey = `nexushrm_billing_${billing.companyId}`;
+  // Save to LocalStorage cache
+  localStorage.setItem(localKey, JSON.stringify(billing));
+
+  // Try saving to Supabase
+  try {
+    if (checkSupabase()) {
+      const { error } = await supabase
+        .from('company_billing')
+        .upsert({
+          company_id: billing.companyId,
+          cutoff_day: billing.cutoffDay,
+          per_month_bill: billing.perMonthBill,
+          bkash_number: billing.bkashNumber,
+          manual_override: billing.manualOverride,
+          payments: billing.payments,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'company_id' });
+
+      if (error) {
+        console.warn('Error saving to company_billing (table missing?), writing to fallback storage:', error.message);
+        await saveCompanyBillingToFallback(billing);
+      }
+    }
+  } catch (err) {
+    console.error('Exception saving billing to Supabase:', err);
+  }
+};
+
+export const getAllBillings = async (): Promise<CompanyBilling[]> => {
+  const globalBkash = getGlobalBkashNumber();
+  // Try fetching all from database
+  try {
+    if (checkSupabase()) {
+      const { data, error } = await supabase
+        .from('company_billing')
+        .select('*');
+
+      if (!error && data) {
+        return data.map(item => ({
+          companyId: item.company_id,
+          cutoffDay: item.cutoff_day ?? DEFAULT_CUTOFF_DAY,
+          perMonthBill: item.per_month_bill ?? DEFAULT_PER_MONTH_BILL,
+          bkashNumber: item.bkash_number || DEFAULT_BKASH_NUMBER,
+          manualOverride: !!item.manual_override,
+          payments: Array.isArray(item.payments) ? item.payments : []
+        }));
+      }
+
+      if (error) {
+        console.warn('Error fetching all from company_billing (table missing?), reading fallback storage:', error.message);
+        const fallbackBillings = await getAllBillingsFromFallback(globalBkash);
+        if (fallbackBillings && fallbackBillings.length > 0) {
+          return fallbackBillings;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Error fetching all billings from database:', err);
+  }
+
+  // Fallback: gather from all companies
+  const companies = await getCompanies();
+  const billings: CompanyBilling[] = [];
+  for (const c of companies) {
+    const b = await getCompanyBilling(c.id);
+    billings.push(b);
+  }
+  return billings;
+};
+
+export const getMonthsSinceCreation = (createdAtStr: string): string[] => {
+  if (!createdAtStr) return [];
+  const start = new Date(createdAtStr);
+  const end = new Date();
+  
+  const months: string[] = [];
+  let curr = new Date(start.getFullYear(), start.getMonth(), 1);
+  const stop = new Date(end.getFullYear(), end.getMonth(), 1);
+  
+  while (curr <= stop) {
+    const y = curr.getFullYear();
+    const m = String(curr.getMonth() + 1).padStart(2, '0');
+    months.push(`${y}-${m}`);
+    curr.setMonth(curr.getMonth() + 1);
+  }
+  return months;
+};
+
+export const getCompanyBillingStatus = (createdAtStr: string, billing: CompanyBilling) => {
+  const months = getMonthsSinceCreation(createdAtStr);
+  const paidMonths = new Set(
+    (billing.payments || [])
+      .filter(p => p.status === 'approved')
+      .map(p => p.month)
+  );
+  
+  const dueMonths = months.filter(m => !paidMonths.has(m));
+  
+  const today = new Date();
+  const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  const currentDay = today.getDate();
+  
+  let isLocked = false;
+  
+  if (!billing.manualOverride) {
+    // Locked if there are unpaid past months
+    const unpaidPastMonths = dueMonths.filter(m => m < currentMonthStr);
+    if (unpaidPastMonths.length > 0) {
+      isLocked = true;
+    } 
+    // Or if the current month is unpaid and we are past the cutoff day
+    else if (dueMonths.includes(currentMonthStr) && currentDay > (billing.cutoffDay ?? DEFAULT_CUTOFF_DAY)) {
+      isLocked = true;
+    }
+  }
+  
+  return {
+    dueMonths,
+    paidMonths: Array.from(paidMonths),
+    isLocked
+  };
+};
+
+// --- GLOBAL BKASH NUMBER HELPERS ---
+export const getGlobalBkashNumber = (): string => {
+  return localStorage.getItem('nexushrm_global_bkash') || '01787654321';
+};
+
+export const saveGlobalBkashNumber = async (num: string): Promise<void> => {
+  localStorage.setItem('nexushrm_global_bkash', num);
+  // Also try to update existing companies' default bkash number in Supabase
+  try {
+    if (checkSupabase()) {
+      const { data: billings } = await supabase.from('company_billing').select('*');
+      if (billings) {
+        for (const b of billings) {
+          // If they are on default or blank, update
+          if (!b.bkash_number || b.bkash_number === '01787654321') {
+            await supabase
+              .from('company_billing')
+              .update({ bkash_number: num })
+              .eq('company_id', b.company_id);
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Error saving global bKash to Supabase:', e);
+  }
+};
+
+// --- COMPANY INFO & ADMIN PW MANIPULATION ---
+export const updateCompany = async (id: string, name: string, adminEmail: string): Promise<void> => {
+  try {
+    if (!checkSupabase()) return;
+    const { error } = await supabase
+      .from('companies')
+      .update({ name, admin_email: adminEmail })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error updating company:', error);
+      throw error;
+    }
+  } catch (err) {
+    console.error('Exception updating company:', err);
+    throw err;
+  }
+};
+
+export const resetCompanyAdminPassword = async (id: string): Promise<void> => {
+  try {
+    if (!checkSupabase()) return;
+    const { error } = await supabase
+      .from('companies')
+      .update({ admin_password: '123456' })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error resetting company admin password:', error);
+      throw error;
+    }
+  } catch (err) {
+    console.error('Exception resetting company admin password:', err);
+    throw err;
+  }
+};
+
+// --- DELETE PAYMENT SUBMISSION FROM LOGS ---
+export const deleteCompanyBillingPayment = async (companyId: string, paymentId: string): Promise<void> => {
+  try {
+    const localKey = `nexushrm_billing_${companyId}`;
+    const cached = localStorage.getItem(localKey);
+    let billing: CompanyBilling | null = null;
+    
+    if (cached) {
+      try {
+        billing = JSON.parse(cached);
+      } catch (e) {}
+    }
+    
+    if (!billing && checkSupabase()) {
+      const { data } = await supabase.from('company_billing').select('*').eq('company_id', companyId).maybeSingle();
+      if (data) {
+        billing = {
+          companyId: data.company_id,
+          cutoffDay: data.cutoff_day ?? DEFAULT_CUTOFF_DAY,
+          perMonthBill: data.per_month_bill ?? DEFAULT_PER_MONTH_BILL,
+          bkashNumber: data.bkash_number || DEFAULT_BKASH_NUMBER,
+          manualOverride: !!data.manual_override,
+          payments: Array.isArray(data.payments) ? data.payments : []
+        };
+      }
+    }
+    
+    if (billing) {
+      const updatedPayments = (billing.payments || []).filter(p => p.id !== paymentId);
+      const updatedBilling: CompanyBilling = {
+        ...billing,
+        payments: updatedPayments
+      };
+      
+      // Save updated billing
+      localStorage.setItem(localKey, JSON.stringify(updatedBilling));
+      
+      if (checkSupabase()) {
+        await supabase
+          .from('company_billing')
+          .update({ payments: updatedPayments })
+          .eq('company_id', companyId);
+      }
+    }
+  } catch (err) {
+    console.error('Exception deleting billing payment:', err);
+    throw err;
+  }
+};
+
