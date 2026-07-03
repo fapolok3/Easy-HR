@@ -15,7 +15,7 @@ import {
   deleteCompanyBillingPayment
 } from '../services/api';
 import { Company, CompanyBilling, BillingPayment } from '../types';
-import { IconPlus, IconTrash, IconEdit, IconCheckCircle, IconAlertCircle, IconSettings, IconUsers, IconXCircle, IconFileText } from '../components/Icons';
+import { IconPlus, IconTrash, IconEdit, IconCheckCircle, IconAlertCircle, IconSettings, IconUsers, IconXCircle, IconFileText, IconChevronDown, IconChevronUp } from '../components/Icons';
 import { toast } from 'sonner';
 
 interface AdminPanelProps {
@@ -30,8 +30,10 @@ const AdminPanel = ({ activeTab: routeActiveTab }: AdminPanelProps) => {
 
   const [companies, setCompanies] = useState<Company[]>([]);
   const [billings, setBillings] = useState<Record<string, CompanyBilling>>({});
+  const [expandedCompanies, setExpandedCompanies] = useState<Record<string, boolean>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
   // Global settings
   const [globalBkash, setGlobalBkash] = useState('01787654321');
@@ -276,6 +278,32 @@ const AdminPanel = ({ activeTab: routeActiveTab }: AdminPanelProps) => {
     return date.toLocaleString('en-US', { month: 'short', year: 'numeric' });
   };
 
+  const getAvailableYears = () => {
+    const currentYear = new Date().getFullYear();
+    let minYear = currentYear;
+    companies.forEach(c => {
+      if (c.createdAt) {
+        const y = new Date(c.createdAt).getFullYear();
+        if (y < minYear) {
+          minYear = y;
+        }
+      }
+    });
+    // Fallback if minYear is unrealistic or too high
+    if (minYear > 2026) {
+      minYear = 2026;
+    }
+    const yearsList: number[] = [];
+    for (let y = minYear; y <= currentYear; y++) {
+      yearsList.push(y);
+    }
+    // Make sure currentYear is in the list
+    if (!yearsList.includes(currentYear)) {
+      yearsList.push(currentYear);
+    }
+    return yearsList.sort((a, b) => b - a);
+  };
+
   // Gather all payments across all companies
   const getPaymentsByStatus = (status?: 'pending' | 'approved' | 'rejected') => {
     const list: { company: Company; payment: BillingPayment }[] = [];
@@ -501,67 +529,145 @@ const AdminPanel = ({ activeTab: routeActiveTab }: AdminPanelProps) => {
             )}
           </Card>
 
-          {/* Processed payment audit trail - delete approved payments here */}
+          {/* Processed payment audit trail - grouped company-wise in accordion style */}
           <Card className="p-6 md:p-8">
-            <h2 className="text-md font-black uppercase tracking-wider text-text mb-4">
-              Processed / Archive Payments Log (Approved & Rejected)
-            </h2>
-            <p className="text-xs text-textMuted mb-4 uppercase font-bold tracking-wide">
-              * Approved or rejected payments can be permanently deleted below to correct logs or clear user history.
-            </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-border/60">
+              <div>
+                <h2 className="text-md font-black uppercase tracking-wider text-text">
+                  Processed / Archive Payments Log (Approved & Rejected)
+                </h2>
+                <p className="text-xs text-textMuted uppercase font-bold tracking-wide mt-1">
+                  Showing logs for the year: {selectedYear}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-textMuted uppercase tracking-wider shrink-0">Select Year:</span>
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  className="px-3 py-1.5 text-xs font-bold uppercase rounded-lg border border-border bg-surfaceHighlight text-text focus:outline-none focus:ring-2 focus:ring-[#1cbdb0] min-w-[100px]"
+                >
+                  {getAvailableYears().map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
             
-            {processedPayments.length === 0 ? (
+            {companies.length === 0 ? (
               <div className="p-8 text-center text-textMuted italic uppercase font-bold text-xs tracking-wider border-dashed border border-border rounded-xl">
-                No archived payments found.
+                No companies registered in the system.
               </div>
             ) : (
-              <div className="border border-border rounded-xl overflow-hidden">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-surfaceHighlight text-textMuted uppercase text-[10px] font-black tracking-wider border-b border-border">
-                    <tr>
-                      <th className="px-4 py-3">Company</th>
-                      <th className="px-4 py-3">Bill Month</th>
-                      <th className="px-4 py-3">Transaction ID (TrxID)</th>
-                      <th className="px-4 py-3">Amount</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">Submitted At</th>
-                      <th className="px-4 py-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {processedPayments.map(({ company, payment }) => (
-                      <tr key={payment.id} className="hover:bg-surfaceHighlight/30 transition-colors">
-                        <td className="px-4 py-3.5 font-bold text-text uppercase">{company.name}</td>
-                        <td className="px-4 py-3.5 text-text font-bold uppercase">{getMonthName(payment.month)}</td>
-                        <td className="px-4 py-3.5 font-mono text-textMuted tracking-wider font-extrabold select-all">{payment.trxId}</td>
-                        <td className="px-4 py-3.5 text-text font-semibold">{payment.amount} BDT</td>
-                        <td className="px-4 py-3.5">
-                          {payment.status === 'approved' ? (
-                            <span className="px-2 py-0.5 text-[9px] font-extrabold bg-emerald-100 text-emerald-700 border border-emerald-200 rounded uppercase">
-                              Approved
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 text-[9px] font-extrabold bg-red-100 text-red-700 border border-red-200 rounded uppercase">
-                              Rejected
+              <div className="space-y-4">
+                {companies.map((company) => {
+                  const companyPendingCount = pendingPayments.filter(p => p.company.id === company.id).length;
+                  const companyProcessed = processedPayments.filter(p => {
+                    if (p.company.id !== company.id) return false;
+                    let paymentYear = new Date().getFullYear();
+                    if (p.payment.month) {
+                      const parts = p.payment.month.split('-');
+                      if (parts[0]) {
+                        paymentYear = parseInt(parts[0]);
+                      }
+                    } else if (p.payment.timestamp) {
+                      paymentYear = new Date(p.payment.timestamp).getFullYear();
+                    }
+                    return paymentYear === selectedYear;
+                  });
+                  const isExpanded = !!expandedCompanies[company.id];
+                  
+                  return (
+                    <div key={company.id} className="border border-border rounded-xl overflow-hidden bg-surfaceHighlight/5">
+                      {/* Accordion Header */}
+                      <button
+                        onClick={() => setExpandedCompanies(prev => ({ ...prev, [company.id]: !prev[company.id] }))}
+                        className="w-full flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-surfaceHighlight/20 hover:bg-surfaceHighlight/40 transition-colors text-left gap-3"
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-sm font-black text-text uppercase tracking-wide">
+                            {company.name}
+                          </span>
+                          {companyPendingCount > 0 && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[9px] font-black bg-amber-500 text-white rounded-full uppercase tracking-wider animate-pulse shadow-sm">
+                              <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
+                              {companyPendingCount} Pending
                             </span>
                           )}
-                        </td>
-                        <td className="px-4 py-3.5 text-textMuted text-[10px] font-medium">
-                          {new Date(payment.timestamp).toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3.5 text-right">
-                          <button 
-                            onClick={() => handleDeletePaymentLog(company.id, payment.id)}
-                            className="p-1 text-textMuted hover:text-red-500 transition-colors inline-flex items-center gap-1 uppercase font-bold text-[9px] tracking-wider"
-                          >
-                            <IconTrash className="w-3.5 h-3.5" />
-                            Delete Log
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </div>
+                        
+                        <div className="flex items-center gap-3 self-end sm:self-auto">
+                          <span className="text-[10px] text-textMuted uppercase font-bold tracking-wider">
+                            {companyProcessed.length === 0 ? 'No Archives' : `${companyProcessed.length} Log${companyProcessed.length > 1 ? 's' : ''}`}
+                          </span>
+                          {isExpanded ? (
+                            <IconChevronUp className="w-4 h-4 text-textMuted shrink-0" />
+                          ) : (
+                            <IconChevronDown className="w-4 h-4 text-textMuted shrink-0" />
+                          )}
+                        </div>
+                      </button>
+                      
+                      {/* Accordion Content */}
+                      {isExpanded && (
+                        <div className="p-4 border-t border-border/60 bg-white space-y-4 animate-in slide-in-from-top-2 duration-200">
+                          {companyProcessed.length === 0 ? (
+                            <div className="p-6 text-center text-textMuted italic uppercase font-bold text-[10px] tracking-wider border border-dashed border-border/60 rounded-xl">
+                              No archived payments found for this company.
+                            </div>
+                          ) : (
+                            <div className="border border-border/60 rounded-xl overflow-x-auto shadow-sm">
+                              <table className="w-full text-left text-xs min-w-[600px]">
+                                <thead className="bg-surfaceHighlight/30 text-textMuted uppercase text-[9px] font-black tracking-wider border-b border-border/60">
+                                  <tr>
+                                    <th className="px-4 py-3">Bill Month</th>
+                                    <th className="px-4 py-3">Transaction ID (TrxID)</th>
+                                    <th className="px-4 py-3">Amount</th>
+                                    <th className="px-4 py-3">Status</th>
+                                    <th className="px-4 py-3">Submitted At</th>
+                                    <th className="px-4 py-3 text-right">Actions</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border/40">
+                                  {companyProcessed.map(({ payment }) => (
+                                    <tr key={payment.id} className="hover:bg-surfaceHighlight/20 transition-colors">
+                                      <td className="px-4 py-3.5 text-text font-bold uppercase">{getMonthName(payment.month)}</td>
+                                      <td className="px-4 py-3.5 font-mono text-textMuted tracking-wider font-extrabold select-all">{payment.trxId}</td>
+                                      <td className="px-4 py-3.5 text-text font-semibold">{payment.amount} BDT</td>
+                                      <td className="px-4 py-3.5">
+                                        {payment.status === 'approved' ? (
+                                          <span className="px-2 py-0.5 text-[8px] font-black bg-emerald-100 text-emerald-700 border border-emerald-200 rounded uppercase">
+                                            Approved
+                                          </span>
+                                        ) : (
+                                          <span className="px-2 py-0.5 text-[8px] font-black bg-red-100 text-red-700 border border-red-200 rounded uppercase">
+                                            Rejected
+                                          </span>
+                                        )}
+                                      </td>
+                                      <td className="px-4 py-3.5 text-textMuted text-[10px] font-medium">
+                                        {new Date(payment.timestamp).toLocaleString()}
+                                      </td>
+                                      <td className="px-4 py-3.5 text-right">
+                                        <button 
+                                          onClick={() => handleDeletePaymentLog(company.id, payment.id)}
+                                          className="p-1 text-textMuted hover:text-red-500 transition-colors inline-flex items-center gap-1 uppercase font-bold text-[9px] tracking-wider border border-transparent hover:border-red-100 px-2 py-1 rounded-lg"
+                                        >
+                                          <IconTrash className="w-3.5 h-3.5" />
+                                          Delete Log
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </Card>

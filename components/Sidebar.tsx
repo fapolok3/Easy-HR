@@ -105,9 +105,9 @@ const Sidebar = ({ isCollapsed }: { isCollapsed: boolean }) => {
 
       {/* Navigation */}
       <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto overflow-x-hidden no-scrollbar">
-        {!isCollapsed && (
+        {!isCollapsed && session?.isSuperAdmin && (
           <div className="px-3 mb-2 text-xs font-semibold text-textMuted uppercase tracking-wider">
-            {session?.isSuperAdmin ? 'Central Control' : 'Portal Menu'}
+            Central Control
           </div>
         )}
         {navItems.map((item) => (

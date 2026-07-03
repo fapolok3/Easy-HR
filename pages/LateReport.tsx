@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Input, Button, Badge } from '../components/UI';
-import { fetchAttendance } from '../services/api';
-import { AttendanceRecord } from '../types';
+import { fetchAttendance, fetchEmployees, getOrgSettings } from '../services/api';
+import { AttendanceRecord, Employee, Shift } from '../types';
 import { IconClock, IconFilter, IconDownload } from '../components/Icons';
 import DateRangePicker from '../components/DateRangePicker';
 import { format, startOfToday } from 'date-fns';
@@ -12,6 +12,8 @@ const LateReport = () => {
   const [startDate, setStartDate] = useState(format(startOfToday(), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(startOfToday(), 'yyyy-MM-dd'));
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [shifts, setShifts] = useState<Shift[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(50);
@@ -19,7 +21,15 @@ const LateReport = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const data = await fetchAttendance(startDate, endDate);
+      const [data, empData, settingsData] = await Promise.all([
+        fetchAttendance(startDate, endDate),
+        fetchEmployees(),
+        getOrgSettings()
+      ]);
+      setEmployees(empData);
+      if (settingsData && settingsData.shifts) {
+        setShifts(settingsData.shifts);
+      }
       // Filter for late records only
       setRecords(data.filter(r => r.isLate));
     } catch (error) {
@@ -96,6 +106,7 @@ const LateReport = () => {
                 <th className="p-3 border-r border-white/10 w-16 text-center">SL</th>
                 <th className="p-3 border-r border-white/10">Employee ID</th>
                 <th className="p-3 border-r border-white/10">Employee Name</th>
+                <th className="p-3 border-r border-white/10">Assigned Shift</th>
                 <th className="p-3 border-r border-white/10 text-center">Date</th>
                 <th className="p-3 border-r border-white/10 text-center">In Time</th>
                 <th className="p-3 text-center">Status</th>
@@ -104,11 +115,11 @@ const LateReport = () => {
             <tbody className="divide-y divide-border">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-textMuted">Loading report data...</td>
+                  <td colSpan={7} className="p-8 text-center text-textMuted">Loading report data...</td>
                 </tr>
               ) : records.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-textMuted italic">No late records found for this date.</td>
+                  <td colSpan={7} className="p-8 text-center text-textMuted italic">No late records found for this date.</td>
                 </tr>
               ) : (
                 records
@@ -124,6 +135,19 @@ const LateReport = () => {
                       >
                         {rec.employeeName}
                       </button>
+                    </td>
+                    <td className="p-3 border-r border-border">
+                      {(() => {
+                        const emp = employees.find(e => e.id === rec.employeeId);
+                        const sObj = emp && shifts.find(s => s.id === emp.shift || s.name === emp.shift);
+                        return sObj ? (
+                          <span className="font-bold uppercase text-xs" style={{ color: sObj.color || 'inherit' }}>
+                            {sObj.name} <span className="text-[10px] text-textMuted font-medium">({sObj.startTime} - {sObj.endTime})</span>
+                          </span>
+                        ) : (
+                          <span className="text-textMuted italic text-xs">Not Assigned</span>
+                        );
+                      })()}
                     </td>
                     <td className="p-3 border-r border-border text-center text-textMuted">{rec.date}</td>
                     <td className="p-3 border-r border-border text-center font-mono font-bold text-red-600 bg-red-50">

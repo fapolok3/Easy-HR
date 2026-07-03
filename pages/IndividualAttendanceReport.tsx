@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Badge } from '../components/UI';
 import { IconSearch, IconCalendar, IconUser, IconChevronDown, IconFileText, IconClock, IconCheckCircle, IconXCircle, IconAlertCircle } from '../components/Icons';
-import { fetchAttendance, fetchEmployees, getCurrentSession } from '../services/api';
+import { fetchAttendance, fetchEmployees, getCurrentSession, getOrgSettings } from '../services/api';
 import DateRangePicker from '../components/DateRangePicker';
-import { AttendanceRecord, Employee } from '../types';
+import { AttendanceRecord, Employee, Shift } from '../types';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 
 const IndividualAttendanceReport = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [shifts, setShifts] = useState<Shift[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -19,17 +20,23 @@ const IndividualAttendanceReport = () => {
   const [endDate, setEndDate] = useState(format(endOfMonth(today), 'yyyy-MM-dd'));
 
   useEffect(() => {
-    const loadEmployees = async () => {
-      const data = await fetchEmployees();
-      setEmployees(data);
+    const loadEmployeesAndShifts = async () => {
+      const [empData, settings] = await Promise.all([
+        fetchEmployees(),
+        getOrgSettings()
+      ]);
+      setEmployees(empData);
+      if (settings && settings.shifts) {
+        setShifts(settings.shifts);
+      }
       
       const session = getCurrentSession();
       if (session?.isEmployee && session.employeeId) {
-        const emp = data.find(e => e.id === session.employeeId);
+        const emp = empData.find(e => e.id === session.employeeId);
         if (emp) setSelectedEmployee(emp);
       }
     };
-    loadEmployees();
+    loadEmployeesAndShifts();
   }, []);
 
   useEffect(() => {
@@ -139,6 +146,18 @@ const IndividualAttendanceReport = () => {
                     <div className="flex flex-col min-w-0">
                       <span className={`text-xs font-bold truncate ${selectedEmployee?.id === emp.id ? 'text-primary' : 'text-text'}`}>{emp.name}</span>
                       <span className="text-[10px] text-textMuted truncate">{emp.id}</span>
+                      {(() => {
+                        const sObj = shifts.find(s => s.id === emp.shift || s.name === emp.shift);
+                        return sObj ? (
+                          <span className="text-[9px] font-bold uppercase mt-0.5" style={{ color: sObj.color || '#1cbdb0' }}>
+                            {sObj.name}
+                          </span>
+                        ) : emp.shift ? (
+                          <span className="text-[9px] text-textMuted italic mt-0.5">
+                            {emp.shift}
+                          </span>
+                        ) : null;
+                      })()}
                     </div>
                   </div>
                 ))}
@@ -182,6 +201,18 @@ const IndividualAttendanceReport = () => {
                     <div>
                       <h2 className="text-lg font-bold text-text uppercase">{selectedEmployee.name}</h2>
                       <p className="text-sm text-textMuted font-medium uppercase">{selectedEmployee.designation} • {selectedEmployee.department} • {selectedEmployee.workplace || 'No Workplace'}</p>
+                      {(() => {
+                        const sObj = shifts.find(s => s.id === selectedEmployee.shift || s.name === selectedEmployee.shift);
+                        return sObj ? (
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-black tracking-widest text-white mt-1.5 uppercase" style={{ backgroundColor: sObj.color || '#1cbdb0' }}>
+                            Shift: {sObj.name} ({sObj.startTime} - {sObj.endTime})
+                          </span>
+                        ) : selectedEmployee.shift ? (
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-black tracking-widest text-white mt-1.5 uppercase bg-slate-500">
+                            Shift: {selectedEmployee.shift}
+                          </span>
+                        ) : null;
+                      })()}
                     </div>
                   </div>
                 )}

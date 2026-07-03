@@ -233,7 +233,15 @@ const AdvanceRostering = () => {
                           value={currentShiftId}
                           onChange={(e) => updateRoster(emp.id, emp.name, day, e.target.value)}
                         >
-                          <option value="">Default</option>
+                          {(() => {
+                            const defaultShiftObj = shifts.find(s => s.id === emp.shift || s.name === emp.shift);
+                            const label = defaultShiftObj 
+                              ? `${defaultShiftObj.name.toUpperCase()} (DFT)` 
+                              : (emp.shift ? `${emp.shift.toUpperCase()} (DFT)` : 'DFT SHIFT');
+                            return (
+                              <option value="">{label}</option>
+                            );
+                          })()}
                           <option value="Off Day">OFF DAY</option>
                           {shifts.map(s => (
                             <option key={s.id} value={s.id}>{s.name.toUpperCase()}</option>
@@ -261,7 +269,7 @@ const AdvanceRostering = () => {
             </div>
             <div>
                <h4 className="font-black text-indigo-900 uppercase text-sm tracking-tight">Rostering Guide</h4>
-               <p className="text-xs text-indigo-600/80 max-w-md">"Default" will use the employee's standard assigned shift. Select "OFF DAY" to overwrite with a holiday, or pick any other shift to override for that specific date.</p>
+               <p className="text-xs text-indigo-600/80 max-w-md">Your standard assigned shift (indicated with DFT) will be used by default. Select "OFF DAY" to overwrite with a holiday, or pick any other shift to override for that specific date.</p>
             </div>
          </div>
          <Button 

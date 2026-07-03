@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, Input, Button, Badge } from '../components/UI';
-import { getMobilePunches, fetchEmployees } from '../services/api';
-import { MobilePunch, Employee } from '../types';
+import { getMobilePunches, fetchEmployees, getOrgSettings } from '../services/api';
+import { MobilePunch, Employee, Shift } from '../types';
 import { IconFilter, IconDownload, IconDevice, IconX, IconClock, IconUsers, IconCheckCircle, IconSearch, IconXCircle, IconChevronLeft } from '../components/Icons';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -13,6 +13,7 @@ const MobilePunchReport = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
   const [punches, setPunches] = useState<MobilePunch[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [shifts, setShifts] = useState<Shift[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedPunch, setSelectedPunch] = useState<MobilePunch | null>(null);
   const [showMapModal, setShowMapModal] = useState(false);
@@ -21,11 +22,15 @@ const MobilePunchReport = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [data, emps] = await Promise.all([
+      const [data, emps, settings] = await Promise.all([
         getMobilePunches(),
-        fetchEmployees()
+        fetchEmployees(),
+        getOrgSettings()
       ]);
       setEmployees(emps);
+      if (settings && settings.shifts) {
+        setShifts(settings.shifts);
+      }
       
       const filtered = data.filter(p => {
         const d = new Date(p.timestamp);
@@ -341,6 +346,19 @@ const MobilePunchReport = () => {
                         <div className="flex flex-col">
                           <span className="font-black text-text text-xs group-hover:text-primary transition-colors">{emp.name}</span>
                           <span className="text-xs text-textMuted font-bold uppercase tracking-tight">{emp.id}</span>
+                          {(() => {
+                            const fullEmp = employees.find(e => e.id === emp.id);
+                            const sObj = fullEmp && shifts.find(s => s.id === fullEmp.shift || s.name === fullEmp.shift);
+                            return sObj ? (
+                              <span className="text-[10px] font-bold uppercase mt-0.5" style={{ color: sObj.color || '#1cbdb0' }}>
+                                Shift: {sObj.name}
+                              </span>
+                            ) : fullEmp?.shift ? (
+                              <span className="text-[10px] text-textMuted italic mt-0.5">
+                                Shift: {fullEmp.shift}
+                              </span>
+                            ) : null;
+                          })()}
                         </div>
                       </div>
                     </td>

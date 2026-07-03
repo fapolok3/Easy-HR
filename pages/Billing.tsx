@@ -22,6 +22,7 @@ const Billing = () => {
   const [dueMonths, setDueMonths] = useState<string[]>([]);
   const [isLocked, setIsLocked] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
   // Form states
   const [payMonth, setPayMonth] = useState('');
@@ -155,6 +156,30 @@ const Billing = () => {
 
   const perMonthBill = billing?.perMonthBill ?? DEFAULT_PER_MONTH_BILL;
   const totalCumulativeDue = dueMonths.length * perMonthBill;
+
+  const startYear = company?.createdAt ? new Date(company.createdAt).getFullYear() : 2026;
+  const currentYear = new Date().getFullYear();
+  const years: number[] = [];
+  for (let y = Math.min(startYear, currentYear); y <= currentYear; y++) {
+    years.push(y);
+  }
+  if (!years.includes(currentYear)) {
+    years.push(currentYear);
+  }
+  years.sort((a, b) => b - a);
+
+  const filteredPayments = (billing?.payments || []).filter(p => {
+    let paymentYear = new Date().getFullYear();
+    if (p.month) {
+      const parts = p.month.split('-');
+      if (parts[0]) {
+        paymentYear = parseInt(parts[0]);
+      }
+    } else if (p.timestamp) {
+      paymentYear = new Date(p.timestamp).getFullYear();
+    }
+    return paymentYear === selectedYear;
+  });
 
   // --- RENDERING SUSPENDED LOCKED SCREEN VIEW ---
   if (isLocked) {
@@ -536,7 +561,27 @@ const Billing = () => {
 
           {/* Table */}
           <Card className="p-6 md:p-8">
-            <h2 className="text-md font-black uppercase tracking-wider text-text mb-4">Payment Submission Logs</h2>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-border/60">
+              <div>
+                <h2 className="text-md font-black uppercase tracking-wider text-text">Payment Submission Logs</h2>
+                <p className="text-xs text-textMuted uppercase font-bold tracking-wide mt-1">
+                  Showing logs for the year: {selectedYear}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-textMuted uppercase tracking-wider shrink-0">Select Year:</span>
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  className="px-3 py-1.5 text-xs font-bold uppercase rounded-lg border border-border bg-surfaceHighlight text-text focus:outline-none focus:ring-2 focus:ring-[#1cbdb0] min-w-[100px]"
+                >
+                  {years.map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             <div className="border border-border rounded-xl overflow-hidden">
               <table className="w-full text-left text-xs md:text-sm">
                 <thead className="bg-[#1cbdb0] text-white uppercase text-xs font-black">
@@ -549,14 +594,14 @@ const Billing = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {!billing?.payments || billing.payments.length === 0 ? (
+                  {filteredPayments.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="px-4 py-8 text-center text-textMuted italic uppercase font-bold text-xs tracking-wider">
-                        No previous bKash payment submissions found.
+                        No payment submissions found for {selectedYear}.
                       </td>
                     </tr>
                   ) : (
-                    billing.payments.map((p) => (
+                    filteredPayments.map((p) => (
                       <tr key={p.id} className="hover:bg-surfaceHighlight/30 transition-colors">
                         <td className="px-4 py-3.5 font-extrabold text-text uppercase">{getMonthName(p.month)}</td>
                         <td className="px-4 py-3.5 font-mono text-text tracking-wider font-extrabold select-all">{p.trxId}</td>

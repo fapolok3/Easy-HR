@@ -3,15 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { Card, Button, Badge } from '../components/UI';
 import { IconSearch, IconCalendar, IconFilter, IconChevronDown, IconFileText, IconChevronUp } from '../components/Icons';
 import DateRangePicker from '../components/DateRangePicker';
-import { fetchAttendance, fetchEmployees } from '../services/api';
+import { fetchAttendance, fetchEmployees, getOrgSettings } from '../services/api';
 import { toast } from 'sonner';
-import { AttendanceRecord, Employee } from '../types';
+import { AttendanceRecord, Employee, Shift } from '../types';
 import * as XLSX from 'xlsx';
 
 const Attendance = () => {
   const navigate = useNavigate();
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [shifts, setShifts] = useState<Shift[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [rowsPerPage, setRowsPerPage] = useState(50);
@@ -47,12 +48,16 @@ const Attendance = () => {
 
   const loadData = async () => {
     setLoading(true);
-    const [attendanceData, employeeData] = await Promise.all([
+    const [attendanceData, employeeData, settings] = await Promise.all([
       fetchAttendance(startDate, endDate),
-      fetchEmployees()
+      fetchEmployees(),
+      getOrgSettings()
     ]);
     setRecords(attendanceData);
     setEmployees(employeeData);
+    if (settings && settings.shifts) {
+      setShifts(settings.shifts);
+    }
     setLoading(false);
   };
 
@@ -387,6 +392,20 @@ const Attendance = () => {
                          <div className="flex flex-col min-w-0">
                             <span className="font-black text-slate-800 text-[11px] leading-tight truncate group-hover/item:text-primary transition-colors uppercase tracking-tight">{emp.name}</span>
                             <span className="text-[9px] text-textMuted font-bold uppercase truncate tracking-tighter opacity-70">{emp.designation}</span>
+                             {(() => {
+                               const sObj = shifts.find(s => s.id === emp.shift || s.name === emp.shift);
+                               return sObj ? (
+                                 <span className="text-[8px] font-bold uppercase truncate tracking-tighter mt-0.5" style={{ color: sObj.color || '#1cbdb0' }}>
+                                   Shift: {sObj.name}
+                                 </span>
+                               ) : (
+                                 emp.shift ? (
+                                   <span className="text-[8px] text-textMuted italic truncate tracking-tighter mt-0.5">
+                                     Shift: {emp.shift}
+                                   </span>
+                                 ) : null
+                               );
+                             })()}
                          </div>
                       </div>
                     </td>

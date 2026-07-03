@@ -68,8 +68,12 @@ const Employees = () => {
     const matchesDept = filters.department === '' || emp.department === filters.department;
     const matchesGender = filters.gender === '' || emp.gender === filters.gender;
     const matchesDesignation = filters.designation === '' || emp.designation === filters.designation;
+    const matchesShiftGroup = filters.shiftGroup === '' || emp.shift === filters.shiftGroup || (() => {
+      const sObj = orgSettings.shifts.find(s => s.name === filters.shiftGroup || s.id === filters.shiftGroup);
+      return sObj ? (emp.shift === sObj.id || emp.shift === sObj.name) : false;
+    })();
     
-    return matchesGlobalSearch && matchesStatus && matchesDept && matchesGender && matchesDesignation;
+    return matchesGlobalSearch && matchesStatus && matchesDept && matchesGender && matchesDesignation && matchesShiftGroup;
   });
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -308,6 +312,7 @@ const Employees = () => {
                 <th className="px-6 py-4">ID</th>
                 <th className="px-6 py-4">Designation</th>
                 <th className="px-6 py-4">Department</th>
+                <th className="px-6 py-4">Assigned Shift</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
@@ -315,13 +320,13 @@ const Employees = () => {
             <tbody className="divide-y divide-border">
               {loading ? (
                  <tr>
-                    <td colSpan={7} className="px-6 py-8 text-center">
+                    <td colSpan={8} className="px-6 py-8 text-center">
                        <div className="animate-pulse flex justify-center text-primary">Loading data...</div>
                     </td>
                  </tr>
               ) : filteredEmployees.length === 0 ? (
                  <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-textMuted">
+                    <td colSpan={8} className="px-6 py-12 text-center text-textMuted">
                       No employees found matching your criteria.
                     </td>
                  </tr>
@@ -358,6 +363,18 @@ const Employees = () => {
                     <td className="px-6 py-4 font-mono text-xs">{emp.id}</td>
                     <td className="px-6 py-4">{emp.designation}</td>
                     <td className="px-6 py-4">{emp.department}</td>
+                    <td className="px-6 py-4">
+                      {(() => {
+                        const sObj = orgSettings.shifts.find(s => s.id === emp.shift || s.name === emp.shift);
+                        return sObj ? (
+                          <span className="font-bold text-text uppercase text-xs" style={{ color: sObj.color || 'inherit' }}>
+                            {sObj.name} <span className="text-[10px] text-textMuted font-medium">({sObj.startTime} - {sObj.endTime})</span>
+                          </span>
+                        ) : (
+                          <span className="text-textMuted italic text-xs">Not Assigned</span>
+                        );
+                      })()}
+                    </td>
                     <td className="px-6 py-4">
                       <Badge variant={emp.status === 'Active' ? 'success' : emp.status === 'Inactive' ? 'default' : emp.status === 'Resigned' ? 'warning' : 'danger'}>
                         {emp.status}
