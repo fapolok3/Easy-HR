@@ -209,8 +209,8 @@ export default function DateRangePicker({ startDate, endDate, onChange, lang = '
                 </div>
 
                 <div className="grid grid-cols-7 gap-0.5 mb-1">
-                  {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day) => (
-                    <div key={day} className="text-center text-[7px] font-bold text-gray-400 tracking-wider">
+                  {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
+                    <div key={`${day}-${idx}`} className="text-center text-[7px] font-bold text-gray-400 tracking-wider">
                       {day}
                     </div>
                   ))}

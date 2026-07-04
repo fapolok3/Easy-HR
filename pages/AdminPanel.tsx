@@ -17,6 +17,7 @@ import {
 import { Company, CompanyBilling, BillingPayment } from '../types';
 import { IconPlus, IconTrash, IconEdit, IconCheckCircle, IconAlertCircle, IconSettings, IconUsers, IconXCircle, IconFileText, IconChevronDown, IconChevronUp } from '../components/Icons';
 import { toast } from 'sonner';
+import { useSession } from '../App';
 
 interface AdminPanelProps {
   activeTab?: 'companies' | 'pending-payments' | 'locked-portals' | 'active-portals' | 'billing-settings';
@@ -37,6 +38,56 @@ const AdminPanel = ({ activeTab: routeActiveTab }: AdminPanelProps) => {
 
   // Global settings
   const [globalBkash, setGlobalBkash] = useState('01787654321');
+  const { systemLogo, setSystemLogo } = useSession();
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingLogo(true);
+    const uploadPromise = new Promise(async (resolve, reject) => {
+      try {
+        const { uploadSystemLogo } = await import('../services/api');
+        const url = await uploadSystemLogo(file);
+        if (url) {
+          setSystemLogo(url);
+          resolve(url);
+        } else {
+          reject(new Error('Failed to retrieve upload URL.'));
+        }
+      } catch (err: any) {
+        reject(err);
+      }
+    });
+
+    toast.promise(uploadPromise, {
+      loading: 'Uploading custom logo to Supabase...',
+      success: 'System logo uploaded and set successfully!',
+      error: (err) => err.message || 'Failed to upload custom logo.'
+    });
+
+    try {
+      await uploadPromise;
+    } catch (e) {}
+    setUploadingLogo(false);
+  };
+
+  const handleLogoDelete = async () => {
+    if (window.confirm('Are you sure you want to remove the custom logo and revert to the default branding?')) {
+      setUploadingLogo(true);
+      try {
+        const { deleteSystemLogo } = await import('../services/api');
+        await deleteSystemLogo();
+        setSystemLogo(null);
+        toast.success('Custom system logo removed successfully.');
+      } catch (err) {
+        toast.error('Failed to delete system logo.');
+      } finally {
+        setUploadingLogo(false);
+      }
+    }
+  };
 
   // New & Edit Company Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -868,6 +919,57 @@ const AdminPanel = ({ activeTab: routeActiveTab }: AdminPanelProps) => {
                 Save Global Number
               </Button>
             </form>
+          </Card>
+
+          {/* Global Logo & Favicon Configuration */}
+          <Card className="p-6 md:p-8 space-y-4">
+            <h2 className="text-md font-black uppercase tracking-wider text-[#1cbdb0] flex items-center gap-2">
+              <IconSettings className="w-5 h-5 text-primary" />
+              Global System Branding & Logo
+            </h2>
+            <p className="text-xs text-textMuted leading-relaxed uppercase font-bold tracking-wide">
+              * Upload a custom system logo. It will automatically update the branding logo in the sidebar, login page, and will be set as the browser's tab icon (favicon). This is stored securely in Supabase.
+            </p>
+            
+            <div className="flex flex-col md:flex-row items-center gap-6 p-4 bg-surfaceHighlight/50 rounded-xl border border-border">
+              <div className="w-20 h-20 rounded-xl bg-surface border border-border flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
+                {systemLogo ? (
+                  <img src={systemLogo} alt="Current System Logo" className="w-full h-full object-contain p-2" referrerPolicy="no-referrer" />
+                ) : (
+                  <span className="text-3xl font-black text-textMuted">E</span>
+                )}
+              </div>
+              
+              <div className="flex-1 space-y-3 w-full">
+                <div className="flex flex-wrap gap-3">
+                  <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-primary text-white text-xs font-black uppercase tracking-widest rounded-lg hover:bg-primary/90 transition-colors">
+                    <span>Choose Image</span>
+                    <input 
+                      type="file" 
+                      accept="image/png, image/jpeg, image/jpg, image/webp, image/x-icon, image/svg+xml" 
+                      onChange={handleLogoUpload} 
+                      className="hidden" 
+                      disabled={uploadingLogo}
+                    />
+                  </label>
+                  
+                  {systemLogo && (
+                    <Button 
+                      variant="ghost" 
+                      onClick={handleLogoDelete} 
+                      disabled={uploadingLogo}
+                      className="border border-red-500/20 text-red-500 hover:bg-red-500/10 text-xs font-black uppercase tracking-widest px-4 py-2"
+                    >
+                      Remove Logo
+                    </Button>
+                  )}
+                </div>
+                
+                <p className="text-[10px] text-textMuted uppercase font-bold">
+                  Recommended size: 256x256 pixels. Format: PNG, WEBP, SVG or ICO. Max file size: 2MB.
+                </p>
+              </div>
+            </div>
           </Card>
 
           {/* Pricing Config Table */}

@@ -35,10 +35,14 @@ const SessionContext = React.createContext<{
   session: AuthSession | null;
   login: (session: AuthSession) => void;
   logout: () => void;
+  systemLogo: string | null;
+  setSystemLogo: (url: string | null) => void;
 }>({
   session: null,
   login: () => {},
   logout: () => {},
+  systemLogo: null,
+  setSystemLogo: () => {},
 });
 
 export const useSession = () => React.useContext(SessionContext);
@@ -357,6 +361,7 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
 const App = () => {
   const [session, setSession] = useState<AuthSession | null>(getCurrentSession());
   const [isLocked, setIsLocked] = useState(false);
+  const [systemLogo, setSystemLogo] = useState<string | null>(null);
   const isSupabaseReady = checkSupabase();
 
   const login = (newSession: AuthSession) => {
@@ -369,6 +374,22 @@ const App = () => {
     setSession(null);
     setIsLocked(false);
   };
+
+  useEffect(() => {
+    const loadSystemLogo = async () => {
+      try {
+        const { getSystemLogoConfig, setFavicon } = await import('./services/api');
+        const config = await getSystemLogoConfig();
+        if (config && config.logoUrl) {
+          setSystemLogo(config.logoUrl);
+          setFavicon(config.logoUrl);
+        }
+      } catch (err) {
+        console.warn('Failed to load global logo on mount:', err);
+      }
+    };
+    loadSystemLogo();
+  }, []);
 
   useEffect(() => {
     const checkLockStatus = async () => {
@@ -395,7 +416,7 @@ const App = () => {
   }, [session]);
 
   return (
-    <SessionContext.Provider value={{ session, login, logout }}>
+    <SessionContext.Provider value={{ session, login, logout, systemLogo, setSystemLogo }}>
       <Toaster 
         theme="dark" 
         position="top-right" 

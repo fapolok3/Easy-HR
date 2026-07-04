@@ -22,7 +22,7 @@ interface NavItem {
 }
 
 const Sidebar = ({ isCollapsed }: { isCollapsed: boolean }) => {
-  const { session } = useSession();
+  const { session, systemLogo } = useSession();
   const [pendingPaymentsCount, setPendingPaymentsCount] = useState(0);
 
   useEffect(() => {
@@ -96,10 +96,19 @@ const Sidebar = ({ isCollapsed }: { isCollapsed: boolean }) => {
       {/* Logo Area */}
       <div className="h-16 flex items-center px-6 border-b border-border overflow-hidden whitespace-nowrap">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 min-w-[32px] rounded-lg bg-gradient-to-br from-[#1cbdb0] to-primary flex items-center justify-center text-white font-bold">
-            N
-          </div>
-          {!isCollapsed && <span className="text-xl font-bold tracking-tight text-text">Nexus<span className="text-primary">HRM</span></span>}
+          {systemLogo ? (
+            <img 
+              src={systemLogo} 
+              alt="Easy HR Logo" 
+              className="w-8 h-8 min-w-[32px] object-contain rounded-lg"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className="w-8 h-8 min-w-[32px] rounded-lg bg-gradient-to-br from-[#1cbdb0] to-primary flex items-center justify-center text-white font-bold">
+              E
+            </div>
+          )}
+          {!isCollapsed && <span className="text-xl font-bold tracking-tight text-text">Easy<span className="text-primary"> HR</span></span>}
         </div>
       </div>
 

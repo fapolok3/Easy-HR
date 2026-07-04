@@ -113,6 +113,59 @@ const Attendance = () => {
             row[`${date} Exit`] = formatTimeTo12Hour(rec?.checkOut || '-');
             row[`${date} Hours`] = rec?.hours || '-';
           });
+
+          // Calculate summary for export
+          let presentCount = 0;
+          let absentCount = 0;
+          let leaveCount = 0;
+          let lateCount = 0;
+          let totalExpectedMins = 0;
+          let totalActualMins = 0;
+
+          uniqueDates.forEach(date => {
+            const rec = records.find(r => r.employeeId === emp.id && r.date === date);
+            const isAbsent = !rec || rec.status === 'Absent' || rec.checkIn === '-';
+            const isHoliday = rec?.isHoliday;
+            const isOffDayStatus = rec?.isOffDay && isAbsent;
+            const isLeave = rec?.status === 'Leave';
+            const workedOnOffDay = rec?.isOffDay && !isAbsent;
+            const workedOnHoliday = rec?.isHoliday && !isAbsent;
+            const isLate = rec?.isLate && !workedOnOffDay && !workedOnHoliday;
+
+            if (isLeave) {
+              leaveCount++;
+            } else if (isAbsent && !isHoliday && !isOffDayStatus) {
+              absentCount++;
+            } else if (!isAbsent) {
+              presentCount++;
+            }
+
+            if (isLate) {
+              lateCount++;
+            }
+
+            const expectedHoursVal = (isHoliday || rec?.isOffDay || isLeave) ? 0 : parseFloat(rec?.expectedHours || '0');
+            totalExpectedMins += expectedHoursVal * 60;
+
+            const actualHoursVal = rec?.hours && rec.hours !== '-' ? parseFloat(rec.hours) : 0;
+            totalActualMins += actualHoursVal * 60;
+          });
+
+          const diffMins = totalExpectedMins - totalActualMins;
+          const avgMins = uniqueDates.length > 0 ? Math.round(totalActualMins / uniqueDates.length) : 0;
+
+          const formatMinsToHhMm = (mins: number) => {
+            const hrs = Math.floor(mins / 60);
+            const m = Math.round(mins % 60);
+            return `${hrs}h ${m}m`;
+          };
+
+          row['Present'] = presentCount;
+          row['Absent'] = absentCount;
+          row['Leave'] = leaveCount;
+          row['Late'] = lateCount;
+          row['Actual Hours'] = formatMinsToHhMm(totalActualMins);
+          row['Average Hours'] = formatMinsToHhMm(avgMins);
           
           return row;
         });
@@ -334,6 +387,12 @@ const Attendance = () => {
                     {formatDateLabel(date)}
                   </th>
                 ))}
+                <th className="p-2 border-r border-[#15a398] text-center w-16 min-w-[64px] bg-[#1cbdb0] uppercase text-[9px] tracking-widest" rowSpan={2}>Present</th>
+                <th className="p-2 border-r border-[#15a398] text-center w-16 min-w-[64px] bg-[#1cbdb0] uppercase text-[9px] tracking-widest" rowSpan={2}>Absent</th>
+                <th className="p-2 border-r border-[#15a398] text-center w-16 min-w-[64px] bg-[#1cbdb0] uppercase text-[9px] tracking-widest" rowSpan={2}>Leave</th>
+                <th className="p-2 border-r border-[#15a398] text-center w-16 min-w-[64px] bg-[#1cbdb0] uppercase text-[9px] tracking-widest" rowSpan={2}>Late</th>
+                <th className="p-2 border-r border-[#15a398] text-center w-24 min-w-[96px] bg-[#1cbdb0] uppercase text-[9px] tracking-widest" rowSpan={2}>Actual Hours</th>
+                <th className="p-2 border-r border-[#15a398] text-center w-24 min-w-[96px] bg-[#1cbdb0] uppercase text-[9px] tracking-widest" rowSpan={2}>Average Hours</th>
               </tr>
               <tr className="bg-[#15948a] text-[9px] uppercase tracking-widest sticky top-[25px] z-30 font-black">
                 {uniqueDates.map(date => (
@@ -348,7 +407,7 @@ const Attendance = () => {
             <tbody className="bg-white divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={3 + (uniqueDates.length * 3)} className="p-24 text-center">
+                  <td colSpan={3 + (uniqueDates.length * 3) + 6} className="p-24 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin"></div>
                       <p className="text-[10px] font-bold text-textMuted uppercase tracking-widest">Loading...</p>
@@ -357,7 +416,7 @@ const Attendance = () => {
                 </tr>
               ) : filteredEmployees.length === 0 ? (
                 <tr>
-                  <td colSpan={3 + (uniqueDates.length * 3)} className="p-24 text-center">
+                  <td colSpan={3 + (uniqueDates.length * 3) + 6} className="p-24 text-center">
                     <div className="flex flex-col items-center gap-1 opacity-40">
                       <IconSearch className="w-8 h-8 text-slate-300" />
                       <p className="text-sm font-black text-text uppercase tracking-tight">No match</p>
@@ -462,6 +521,75 @@ const Attendance = () => {
                          </React.Fragment>
                        );
                     })}
+                     {(() => {
+                       let presentCount = 0;
+                       let absentCount = 0;
+                       let leaveCount = 0;
+                       let lateCount = 0;
+                       let totalExpectedMins = 0;
+                       let totalActualMins = 0;
+
+                       uniqueDates.forEach(date => {
+                         const rec = records.find(r => r.employeeId === emp.id && r.date === date);
+                         const isAbsent = !rec || rec.status === 'Absent' || rec.checkIn === '-';
+                         const isHoliday = rec?.isHoliday;
+                         const isOffDayStatus = rec?.isOffDay && isAbsent;
+                         const isLeave = rec?.status === 'Leave';
+                         const workedOnOffDay = rec?.isOffDay && !isAbsent;
+                         const workedOnHoliday = rec?.isHoliday && !isAbsent;
+                         const isLate = rec?.isLate && !workedOnOffDay && !workedOnHoliday;
+
+                         if (isLeave) {
+                           leaveCount++;
+                         } else if (isAbsent && !isHoliday && !isOffDayStatus) {
+                           absentCount++;
+                         } else if (!isAbsent) {
+                           presentCount++;
+                         }
+
+                         if (isLate) {
+                           lateCount++;
+                         }
+
+                         const expectedHoursVal = (isHoliday || rec?.isOffDay || isLeave) ? 0 : parseFloat(rec?.expectedHours || '0');
+                         totalExpectedMins += expectedHoursVal * 60;
+
+                         const actualHoursVal = rec?.hours && rec.hours !== '-' ? parseFloat(rec.hours) : 0;
+                         totalActualMins += actualHoursVal * 60;
+                       });
+
+                       const diffMins = totalExpectedMins - totalActualMins;
+                       const avgMins = uniqueDates.length > 0 ? Math.round(totalActualMins / uniqueDates.length) : 0;
+
+                       const formatMinsToHhMm = (mins: number) => {
+                         const hrs = Math.floor(mins / 60);
+                         const m = Math.round(mins % 60);
+                         return `${hrs}h ${m}m`;
+                       };
+
+                       return (
+                         <React.Fragment>
+                           <td className="p-2 border-r border-slate-100 text-center font-bold text-slate-800 bg-slate-50/50 w-16">
+                             {presentCount}
+                           </td>
+                           <td className="p-2 border-r border-slate-100 text-center font-bold text-slate-800 bg-slate-50/50 w-16">
+                             {absentCount}
+                           </td>
+                           <td className="p-2 border-r border-slate-100 text-center font-bold text-slate-800 bg-slate-50/50 w-16">
+                             {leaveCount}
+                           </td>
+                           <td className="p-2 border-r border-slate-100 text-center font-bold text-slate-800 bg-slate-50/50 w-16">
+                             {lateCount}
+                           </td>
+                           <td className="p-2 border-r border-slate-100 text-center font-semibold text-slate-700 bg-slate-50/50 w-24">
+                             {formatMinsToHhMm(totalActualMins)}
+                           </td>
+                           <td className="p-2 border-r border-slate-100 text-center font-semibold text-slate-700 bg-slate-50/50 w-24">
+                             {formatMinsToHhMm(avgMins)}
+                           </td>
+                         </React.Fragment>
+                       );
+                     })()}
                   </tr>
                 ))
               )}

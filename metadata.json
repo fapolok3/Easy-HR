@@ -1,5 +1,5 @@
 {
-  "name": "Remix: Easy HR",
+  "name": "Easy HR",
   "description": "HR Management System with advanced analytics, real-time attendance tracking, and AI-powered insights.",
   "requestFramePermissions": ["geolocation"]
 }

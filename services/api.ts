@@ -1995,3 +1995,128 @@ export const deleteCompanyBillingPayment = async (companyId: string, paymentId: 
   }
 };
 
+export interface SystemLogoConfig {
+  logoUrl: string;
+  updatedAt: number;
+}
+
+export const setFavicon = (url: string) => {
+  if (typeof document === 'undefined') return;
+  let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
+  if (!link) {
+    link = document.createElement('link');
+    link.rel = 'icon';
+    document.getElementsByTagName('head')[0].appendChild(link);
+  }
+  link.href = `${url}?t=${Date.now()}`;
+};
+
+export const getSystemLogoConfig = async (): Promise<SystemLogoConfig | null> => {
+  try {
+    const cached = localStorage.getItem('easyhr_system_logo_config');
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed && parsed.logoUrl) {
+          return parsed;
+        }
+      } catch (e) {}
+    }
+
+    if (!checkSupabase()) return null;
+
+    const { data } = supabase.storage.from('avatars').getPublicUrl('system/config.json');
+    const response = await fetch(data.publicUrl);
+    if (response.ok) {
+      const config = await response.json();
+      localStorage.setItem('easyhr_system_logo_config', JSON.stringify(config));
+      return config;
+    }
+  } catch (err) {
+    console.warn('Failed to load system logo config:', err);
+  }
+  return null;
+};
+
+export const uploadSystemLogo = async (file: File): Promise<string | null> => {
+  try {
+    if (!checkSupabase()) return null;
+
+    const MAX_SIZE = 2 * 1024 * 1024; // 2MB
+    if (file.size > MAX_SIZE) {
+      throw new Error('File size exceeds 2MB limit.');
+    }
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/x-icon', 'image/svg+xml'];
+    if (!allowedTypes.includes(file.type)) {
+      throw new Error('Unsupported format. Please use JPG, PNG, WEBP, ICO or SVG.');
+    }
+
+    const fileExt = file.name.split('.').pop() || 'png';
+    const filePath = `system/logo.${fileExt}`;
+    
+    // Upload image with upsert
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, file, { upsert: true });
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(filePath);
+
+    const config: SystemLogoConfig = {
+      logoUrl: publicUrl,
+      updatedAt: Date.now()
+    };
+
+    const configData = JSON.stringify(config);
+    const blob = new Blob([configData], { type: 'application/json' });
+    const configFile = new File([blob], 'config.json', { type: 'application/json' });
+
+    const { error: configError } = await supabase.storage
+      .from('avatars')
+      .upload('system/config.json', configFile, { upsert: true });
+
+    if (configError) {
+      console.warn('Failed to upload config.json, but logo image is uploaded:', configError);
+    }
+
+    localStorage.setItem('easyhr_system_logo_config', JSON.stringify(config));
+    setFavicon(publicUrl);
+
+    return publicUrl;
+  } catch (err: any) {
+    console.error('Error uploading system logo:', err);
+    throw err;
+  }
+};
+
+export const deleteSystemLogo = async () => {
+  try {
+    localStorage.removeItem('easyhr_system_logo_config');
+    if (typeof document !== 'undefined') {
+      let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
+      if (link) {
+        link.href = '';
+      }
+    }
+    if (!checkSupabase()) return;
+    
+    await supabase.storage.from('avatars').remove([
+      'system/logo.png', 
+      'system/logo.jpg', 
+      'system/logo.jpeg', 
+      'system/logo.webp', 
+      'system/logo.ico', 
+      'system/logo.svg', 
+      'system/config.json'
+    ]);
+  } catch (err) {
+    console.error('Error deleting system logo:', err);
+  }
+};
+
+
