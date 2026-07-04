@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Input, Button } from '../components/UI';
 import { getCompanies } from '../services/api';
 import { toast } from 'sonner';
 import { AuthSession } from '../types';
 import { useSession } from '../App';
-import { motion } from 'motion/react';
-import { Mail, Lock, Eye, EyeOff, Check, Clock, Calendar, Users, ArrowUpRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Mail, Lock, Eye, EyeOff, Check, Clock, Calendar, Users, ArrowUpRight, MapPin, Smartphone, Sparkles } from 'lucide-react';
 
 // Custom high-fidelity Easy HR SVG Logo Component matching the user image
 export const EasyHRLogo = ({ className = "w-16 h-16", dark = false }: { className?: string; dark?: boolean }) => {
@@ -41,6 +41,14 @@ const Login = () => {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  const [currentVectorIndex, setCurrentVectorIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentVectorIndex((prev) => (prev + 1) % 3);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, []);
   
   const navigate = useNavigate();
   const { login, systemLogo, systemName } = useSession();
@@ -123,6 +131,124 @@ const Login = () => {
     }
   };
 
+  const vectors = [
+    {
+      title: "Live Activity",
+      subtitle: "Real-time presence updates",
+      icon: <Sparkles className="w-4 h-4 text-emerald-500 animate-pulse" />,
+      content: (
+        <div className="space-y-3.5">
+          <div className="flex items-center justify-between bg-slate-50/50 p-2.5 rounded-xl border border-slate-100">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 font-bold text-[10px] shadow-sm">
+                JD
+              </div>
+              <div>
+                <h5 className="text-[11px] font-bold text-slate-800 leading-tight">John Doe</h5>
+                <p className="text-[9px] text-slate-400 font-semibold leading-none mt-0.5">Developer</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="inline-block px-1.5 py-0.5 rounded bg-emerald-50 text-[9px] font-extrabold text-emerald-600 border border-emerald-100">
+                In • 09:00 AM
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between bg-slate-50/50 p-2.5 rounded-xl border border-slate-100">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-[10px] shadow-sm">
+                SC
+              </div>
+              <div>
+                <h5 className="text-[11px] font-bold text-slate-800 leading-tight">Sarah Connor</h5>
+                <p className="text-[9px] text-slate-400 font-semibold leading-none mt-0.5">HR Manager</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="inline-block px-1.5 py-0.5 rounded bg-blue-50 text-[9px] font-extrabold text-blue-600 border border-blue-100">
+                In • 08:45 AM
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between bg-slate-50/50 p-2.5 rounded-xl border border-slate-100">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600 font-bold text-[10px] shadow-sm">
+                AM
+              </div>
+              <div>
+                <h5 className="text-[11px] font-bold text-slate-800 leading-tight">Alex Miller</h5>
+                <p className="text-[9px] text-slate-400 font-semibold leading-none mt-0.5">Designer</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="inline-block px-1.5 py-0.5 rounded bg-amber-50 text-[9px] font-extrabold text-amber-600 border border-amber-100">
+                On Leave
+              </span>
+            </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      title: "Mobile Attendance",
+      subtitle: "Secure location-tagged tracking",
+      icon: <Smartphone className="w-4 h-4 text-blue-500" />,
+      content: (
+        <div className="space-y-4 flex flex-col items-center py-2">
+          <div className="relative w-20 h-20 flex items-center justify-center">
+            <div className="absolute inset-0 rounded-full bg-blue-100/40 animate-ping" />
+            <div className="absolute w-14 h-14 rounded-full bg-blue-100/60 animate-pulse" />
+            <div className="relative w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white shadow-lg">
+              <MapPin className="w-5 h-5" />
+            </div>
+          </div>
+          
+          <div className="text-center space-y-1">
+            <span className="inline-block px-2.5 py-0.5 rounded-full bg-blue-50 text-[9.5px] font-bold text-blue-600 border border-blue-100">
+              Verified Geofence
+            </span>
+            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Accurate within 5 meters</p>
+          </div>
+        </div>
+      )
+    },
+    {
+      title: "Leave Management",
+      subtitle: "Simplify leave requests & records",
+      icon: <Calendar className="w-4 h-4 text-indigo-500" />,
+      content: (
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-[10px] font-bold text-slate-600">
+              <span>Annual Leave Balance</span>
+              <span className="text-indigo-600 font-extrabold">14 / 20 Days</span>
+            </div>
+            <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
+              <div className="h-full bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full" style={{ width: '70%' }} />
+            </div>
+          </div>
+
+          <div className="p-2.5 rounded-xl bg-indigo-50/50 border border-indigo-100/60 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded bg-indigo-100 flex items-center justify-center text-indigo-600 text-[10px] font-bold">
+                CL
+              </div>
+              <div>
+                <h6 className="text-[10px] font-bold text-slate-800 leading-tight">Casual Leave Request</h6>
+                <p className="text-[8px] text-slate-400 font-semibold mt-0.5">Dec 24 - Dec 26</p>
+              </div>
+            </div>
+            <span className="px-1.5 py-0.5 rounded bg-amber-50 text-[8px] font-extrabold text-amber-600 border border-amber-100">
+              Pending
+            </span>
+          </div>
+        </div>
+      )
+    }
+  ];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-slate-50 to-blue-50 flex items-center justify-center p-4 md:p-8 font-sans relative overflow-hidden">
       {/* Floating ambient glow circles behind the glass card */}
@@ -186,55 +312,51 @@ const Login = () => {
           </div>
 
           {/* Graphical Illustration Container */}
-          <div className="z-10 mt-auto relative flex items-center justify-center pt-8 pb-4 min-h-[280px]">
+          <div className="z-10 mt-auto relative flex flex-col items-center justify-center pt-8 pb-4 min-h-[340px]">
             {/* Ambient light glow behind the graphic */}
             <div className="absolute w-52 h-52 bg-blue-400/15 rounded-full blur-3xl pointer-events-none" />
             
-            {/* Elegant, minimalist vector card */}
-            <div className="w-[270px] bg-white rounded-2xl border border-slate-100 shadow-xl p-5 relative z-10 flex flex-col items-center justify-center space-y-4 transition-all hover:shadow-2xl">
-              <div className="relative w-36 h-36 flex items-center justify-center">
-                {/* Outer pulsing ring */}
-                <div className="absolute inset-0 rounded-full bg-blue-50/50 border border-blue-100 animate-pulse" />
-                
-                {/* Main Minimalist SVG illustration */}
-                <svg className="w-24 h-24 relative z-10" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <defs>
-                    <linearGradient id="clockGrad" x1="20" y1="20" x2="80" y2="80" gradientUnits="userSpaceOnUse">
-                      <stop offset="0%" stopColor="#3B82F6" />
-                      <stop offset="100%" stopColor="#6366F1" />
-                    </linearGradient>
-                  </defs>
-                  
-                  {/* Subtle shadow circle */}
-                  <circle cx="50" cy="50" r="38" fill="white" stroke="#F1F5F9" strokeWidth="2" />
-                  
-                  {/* Clock frame */}
-                  <circle cx="50" cy="50" r="32" stroke="url(#clockGrad)" strokeWidth="3" strokeLinecap="round" />
-                  
-                  {/* Outer accent ticks */}
-                  <line x1="50" y1="23" x2="50" y2="26" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" />
-                  <line x1="50" y1="74" x2="50" y2="77" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" />
-                  <line x1="23" y1="50" x2="26" y2="50" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" />
-                  <line x1="74" y1="50" x2="77" y2="50" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" />
-                  
-                  {/* Clock Hands representing modern schedule */}
-                  <line x1="50" y1="50" x2="68" y2="38" stroke="url(#clockGrad)" strokeWidth="3" strokeLinecap="round" />
-                  <line x1="50" y1="50" x2="50" y2="32" stroke="#1E293B" strokeWidth="2" strokeLinecap="round" />
-                  
-                  {/* Center pin */}
-                  <circle cx="50" cy="50" r="4" fill="white" stroke="#1E293B" strokeWidth="2" />
-                  
-                  {/* Green Successful Check Badge on top right of clock */}
-                  <circle cx="78" cy="22" r="11" fill="#10B981" />
-                  <path d="M74 22L77 25L83 19" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
+            <div className="relative w-[280px] min-h-[220px]">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentVectorIndex}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="w-full bg-white/80 backdrop-blur-md rounded-2xl border border-white/90 shadow-xl p-5 absolute top-0 left-0 space-y-4 hover:shadow-2xl transition-all"
+                >
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-2">
+                      {vectors[currentVectorIndex].icon}
+                      <span className="text-[11px] font-extrabold text-slate-800 uppercase tracking-wider">
+                        {vectors[currentVectorIndex].title}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      Today
+                    </span>
+                  </div>
 
-              {/* Minimal Text Label */}
-              <div className="text-center space-y-1">
-                <h4 className="text-xs font-bold text-slate-800 tracking-tight">Smart Workplace HR</h4>
-                <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Perfect Attendance & Leave Tracker</p>
-              </div>
+                  {vectors[currentVectorIndex].content}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+
+            {/* Carousel Dots/Indicators */}
+            <div className="flex gap-1.5 mt-4 z-20">
+              {vectors.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setCurrentVectorIndex(idx)}
+                  className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                    currentVectorIndex === idx 
+                      ? 'bg-blue-600 w-5' 
+                      : 'bg-slate-300 hover:bg-slate-400'
+                  }`}
+                  aria-label={`Go to slide ${idx + 1}`}
+                />
+              ))}
             </div>
           </div>
         </div>

@@ -32,7 +32,11 @@ const EmployeeProfile = () => {
       const found = employees.find(e => e.id === id);
       if (found) {
         setEmployee(found);
-        setFormData(found);
+        const cleanedData = { ...found };
+        if (cleanedData.email === '-') cleanedData.email = '';
+        if (cleanedData.phone === '-') cleanedData.phone = '';
+        if (cleanedData.joinDate === '-') cleanedData.joinDate = '';
+        setFormData(cleanedData);
       }
       const settings = await getOrgSettings();
       setOrgSettings(settings);
@@ -181,13 +185,13 @@ const EmployeeProfile = () => {
           <Card className="p-8">
             <div className="flex items-center gap-6 mb-8 pb-8 border-b border-border">
               <div className="relative group">
-                <div className="w-24 h-24 rounded-2xl bg-primary/10 text-primary flex items-center justify-center text-3xl font-bold overflow-hidden border border-border">
+                <div className="w-24 h-24 rounded-2xl bg-primary/10 text-primary flex items-center justify-center overflow-hidden border border-border">
                   {isUploading ? (
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                   ) : employee.avatarUrl ? (
                     <img src={employee.avatarUrl} alt={employee.name} className="w-full h-full object-cover" />
                   ) : (
-                    employee.name.split(' ').map(n => n[0]).join('')
+                    <IconUser className="w-12 h-12 text-primary" />
                   )}
                 </div>
                 {!getCurrentSession()?.isEmployee && (

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { Card, Button, Input, Badge, Select, Modal } from '../components/UI';
-import { IconSearch, IconUsers, IconCheckCircle, IconX, IconFilter, IconChevronDown, IconChevronUp, IconDownload, IconUpload } from '../components/Icons';
+import { IconSearch, IconUsers, IconCheckCircle, IconX, IconFilter, IconChevronDown, IconChevronUp, IconDownload, IconUpload, IconUser } from '../components/Icons';
 import { fetchEmployees, getOrgSettings, bulkUpdateEmployees, saveBulkEmployees } from '../services/api';
 import { Employee, OrgSettings } from '../types';
 
@@ -345,18 +345,20 @@ const Employees = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                         <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs overflow-hidden">
+                         <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center overflow-hidden border border-border">
                            {emp.avatarUrl ? (
                              <img src={emp.avatarUrl} alt={emp.name} className="w-full h-full object-cover" />
                            ) : (
-                             emp.name.split(' ').map(n => n[0]).join('')
+                             <IconUser className="w-4 h-4 text-primary" />
                            )}
                          </div>
                          <div>
                             <Link to={`/employees/${emp.id}`} className="font-medium text-text hover:text-primary transition-colors hover:underline">
                               {emp.name}
                             </Link>
-                            <p className="text-xs">{emp.email}</p>
+                            {emp.email && emp.email !== '-' && (
+                              <p className="text-xs text-textMuted">{emp.email}</p>
+                            )}
                          </div>
                       </div>
                     </td>
