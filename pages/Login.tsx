@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { AuthSession } from '../types';
 import { useSession } from '../App';
 import { motion } from 'motion/react';
-import { Mail, Lock, Eye, EyeOff, Check } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Check, Clock, Calendar, Users, ArrowUpRight } from 'lucide-react';
 
 // Custom high-fidelity Easy HR SVG Logo Component matching the user image
 export const EasyHRLogo = ({ className = "w-16 h-16", dark = false }: { className?: string; dark?: boolean }) => {
@@ -137,7 +137,7 @@ const Login = () => {
         className="w-full max-w-5xl bg-white/60 backdrop-blur-2xl rounded-[24px] md:rounded-[32px] border border-white/80 shadow-[0_30px_60px_-15px_rgba(15,23,42,0.1)] overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[620px] relative z-10"
       >
         {/* Left Side (Banner with gradients, checkmarks and dashboard graphic) */}
-        <div className="hidden lg:flex lg:col-span-5 bg-gradient-to-b from-blue-500/80 to-indigo-600/85 backdrop-blur-md text-white p-12 flex-col justify-between relative overflow-hidden border-r border-white/20">
+        <div className="hidden lg:flex lg:col-span-5 bg-gradient-to-b from-blue-100/60 to-indigo-150/50 backdrop-blur-md text-slate-800 p-12 flex-col justify-between relative overflow-hidden border-r border-white/50">
           {/* Decorative background blur shapes */}
           <div className="absolute top-[-20%] left-[-20%] w-80 h-80 bg-blue-300/20 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute bottom-[-20%] right-[-10%] w-80 h-80 bg-indigo-300/20 rounded-full blur-3xl pointer-events-none" />
@@ -154,8 +154,8 @@ const Login = () => {
           {/* Welcome Text in center-top */}
           <div className="z-10 mt-6 mb-6 space-y-6">
             <div>
-              <h2 className="text-3xl font-extrabold tracking-tight mb-2 text-white">Welcome Back!</h2>
-              <p className="text-sm text-blue-50/90 leading-relaxed font-medium">
+              <h2 className="text-3xl font-extrabold tracking-tight mb-2 text-slate-900">Welcome Back!</h2>
+              <p className="text-sm text-slate-600 leading-relaxed font-medium">
                 Sign in to continue to your {systemName} account and manage your workspace.
               </p>
             </div>
@@ -163,102 +163,77 @@ const Login = () => {
             {/* Checkpoint points */}
             <div className="space-y-3.5 pt-2">
               <div className="flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-300 shrink-0 shadow-sm">
+                <div className="w-5 h-5 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 shrink-0 shadow-sm">
                   <Check className="w-3.5 h-3.5 stroke-[3]" />
                 </div>
-                <span className="text-xs font-semibold text-white/95 tracking-wide">Real-time attendance</span>
+                <span className="text-xs font-semibold text-slate-700 tracking-wide">Real-time attendance</span>
               </div>
               <div className="flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-300 shrink-0 shadow-sm">
+                <div className="w-5 h-5 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 shrink-0 shadow-sm">
                   <Check className="w-3.5 h-3.5 stroke-[3]" />
                 </div>
-                <span className="text-xs font-semibold text-white/95 tracking-wide">Shift management</span>
+                <span className="text-xs font-semibold text-slate-700 tracking-wide">Shift management</span>
               </div>
               <div className="flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-300 shrink-0 shadow-sm">
+                <div className="w-5 h-5 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 shrink-0 shadow-sm">
                   <Check className="w-3.5 h-3.5 stroke-[3]" />
                 </div>
-                <span className="text-xs font-semibold text-white/95 tracking-wide">Leave tracking</span>
+                <span className="text-xs font-semibold text-slate-700 tracking-wide">Leave tracking</span>
               </div>
             </div>
 
-            <div className="w-10 h-1 bg-white/40 rounded-full mt-4" />
+            <div className="w-10 h-1 bg-blue-500/30 rounded-full mt-4" />
           </div>
 
           {/* Graphical Illustration Container */}
-          <div className="z-10 mt-auto relative flex items-end justify-center pt-8">
-            {/* The Plant */}
-            <div className="absolute left-[-20px] bottom-0 z-20 flex flex-col items-center">
-              {/* Leaves */}
-              <div className="relative w-16 h-28 flex items-end">
-                {/* Stem */}
-                <div className="absolute left-1/2 bottom-0 w-0.5 h-24 bg-white/30" />
-                {/* Leaf 1 */}
-                <div className="absolute bottom-4 left-0 w-6 h-10 bg-white/40 rounded-full origin-bottom-right rotate-[-35deg] backdrop-blur-[2px]" />
-                {/* Leaf 2 */}
-                <div className="absolute bottom-10 right-0 w-6 h-10 bg-white/50 rounded-full origin-bottom-left rotate-[35deg] backdrop-blur-[2px]" />
-                {/* Leaf 3 */}
-                <div className="absolute bottom-16 left-1 w-5 h-9 bg-white/35 rounded-full origin-bottom-right rotate-[-20deg]" />
-                {/* Leaf 4 */}
-                <div className="absolute bottom-22 right-1 w-5 h-9 bg-white/45 rounded-full origin-bottom-left rotate-[20deg]" />
-                {/* Leaf Top */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-4 h-8 bg-white/60 rounded-full" />
+          <div className="z-10 mt-auto relative flex items-center justify-center pt-8 pb-4 min-h-[280px]">
+            {/* Ambient light glow behind the graphic */}
+            <div className="absolute w-52 h-52 bg-blue-400/15 rounded-full blur-3xl pointer-events-none" />
+            
+            {/* Elegant, minimalist vector card */}
+            <div className="w-[270px] bg-white rounded-2xl border border-slate-100 shadow-xl p-5 relative z-10 flex flex-col items-center justify-center space-y-4 transition-all hover:shadow-2xl">
+              <div className="relative w-36 h-36 flex items-center justify-center">
+                {/* Outer pulsing ring */}
+                <div className="absolute inset-0 rounded-full bg-blue-50/50 border border-blue-100 animate-pulse" />
+                
+                {/* Main Minimalist SVG illustration */}
+                <svg className="w-24 h-24 relative z-10" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="clockGrad" x1="20" y1="20" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+                      <stop offset="0%" stopColor="#3B82F6" />
+                      <stop offset="100%" stopColor="#6366F1" />
+                    </linearGradient>
+                  </defs>
+                  
+                  {/* Subtle shadow circle */}
+                  <circle cx="50" cy="50" r="38" fill="white" stroke="#F1F5F9" strokeWidth="2" />
+                  
+                  {/* Clock frame */}
+                  <circle cx="50" cy="50" r="32" stroke="url(#clockGrad)" strokeWidth="3" strokeLinecap="round" />
+                  
+                  {/* Outer accent ticks */}
+                  <line x1="50" y1="23" x2="50" y2="26" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" />
+                  <line x1="50" y1="74" x2="50" y2="77" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" />
+                  <line x1="23" y1="50" x2="26" y2="50" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" />
+                  <line x1="74" y1="50" x2="77" y2="50" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" />
+                  
+                  {/* Clock Hands representing modern schedule */}
+                  <line x1="50" y1="50" x2="68" y2="38" stroke="url(#clockGrad)" strokeWidth="3" strokeLinecap="round" />
+                  <line x1="50" y1="50" x2="50" y2="32" stroke="#1E293B" strokeWidth="2" strokeLinecap="round" />
+                  
+                  {/* Center pin */}
+                  <circle cx="50" cy="50" r="4" fill="white" stroke="#1E293B" strokeWidth="2" />
+                  
+                  {/* Green Successful Check Badge on top right of clock */}
+                  <circle cx="78" cy="22" r="11" fill="#10B981" />
+                  <path d="M74 22L77 25L83 19" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
               </div>
-              {/* White/Gray Pot */}
-              <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-b-md rounded-t-sm shadow-md border border-white/25 flex items-center justify-center">
-                <div className="w-8 h-1.5 bg-white/30 rounded-full mb-5" />
-              </div>
-            </div>
 
-            {/* Dashboard Mock Window */}
-            <div className="w-full max-w-[280px] bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 overflow-hidden shadow-2xl ml-8">
-              {/* Window Header */}
-              <div className="px-4 py-3 border-b border-white/15 flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-white/30" />
-                <div className="w-2 h-2 rounded-full bg-white/30" />
-                <div className="w-2 h-2 rounded-full bg-white/30" />
-              </div>
-              {/* Window Layout */}
-              <div className="grid grid-cols-12 min-h-[160px] text-white">
-                {/* Sidebar of Mock Window */}
-                <div className="col-span-3 border-r border-white/15 p-3 flex flex-col gap-3 items-center bg-white/5">
-                  <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
-                    <div className="w-3.5 h-3.5 rounded-full bg-white/80" />
-                  </div>
-                  <div className="w-5 h-1 bg-white/30 rounded" />
-                  <div className="w-5 h-1 bg-white/15 rounded" />
-                  <div className="w-5 h-1 bg-white/15 rounded" />
-                  <div className="w-5 h-1 bg-white/15 rounded" />
-                </div>
-                {/* Main of Mock Window */}
-                <div className="col-span-9 p-3 space-y-3">
-                  {/* Row 1 */}
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-white/15" />
-                    <div className="space-y-1 flex-1">
-                      <div className="w-16 h-1.5 bg-white/30 rounded" />
-                      <div className="w-10 h-1 bg-white/15 rounded" />
-                    </div>
-                  </div>
-                  {/* Line Chart Graphic */}
-                  <div className="p-2 rounded-lg bg-white/5 border border-white/10 space-y-1">
-                    <div className="w-12 h-1.5 bg-white/25 rounded mb-2" />
-                    <svg className="w-full h-8 overflow-visible" viewBox="0 0 100 30">
-                      <path d="M0 25 Q20 5, 40 20 T80 8 T100 15" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" />
-                      <circle cx="40" cy="20" r="2" fill="#ffffff" />
-                      <circle cx="80" cy="8" r="2" fill="#ffffff" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Float Small Widget */}
-            <div className="absolute right-[-10px] bottom-4 bg-white/15 backdrop-blur-md rounded-xl shadow-lg border border-white/20 p-2.5 flex items-center gap-2.5 text-white z-20 w-32">
-              <div className="w-6 h-6 rounded-full border-2 border-white border-t-transparent animate-spin flex items-center justify-center" />
-              <div className="space-y-1">
-                <div className="w-14 h-1.5 bg-white/30 rounded" />
-                <div className="w-8 h-1 bg-white/15 rounded" />
+              {/* Minimal Text Label */}
+              <div className="text-center space-y-1">
+                <h4 className="text-xs font-bold text-slate-800 tracking-tight">Smart Workplace HR</h4>
+                <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Perfect Attendance & Leave Tracker</p>
               </div>
             </div>
           </div>
