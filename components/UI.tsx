@@ -33,9 +33,9 @@ export const Button = ({ children, variant = 'primary', size = 'md', className, 
     ghost: "text-textMuted hover:text-text hover:bg-surfaceHighlight"
   };
   const sizes = {
-    sm: "h-9 px-3 text-sm",
-    md: "h-10 px-4 py-2",
-    lg: "h-11 px-8"
+    sm: "h-8 px-2.5 text-[11px]",
+    md: "h-9 px-3.5 py-1.5 text-xs",
+    lg: "h-10 px-6 text-sm"
   };
 
   return (
@@ -74,13 +74,13 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
 }
 
 export const Input = ({ label, error, className, ...props }: InputProps) => (
-  <div className="w-full">
-    {label && <label className="block text-sm font-medium text-textMuted mb-1">{label}</label>}
+  <div className="w-full font-sans">
+    {label && <label className="block text-[10px] font-bold uppercase tracking-wider text-textMuted mb-1">{label}</label>}
     <input
-      className={`w-full h-10 px-3 py-2 bg-surfaceHighlight border border-border rounded-lg text-sm text-text placeholder:text-textMuted focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50 ${error ? 'border-danger focus:ring-danger' : ''} ${className || ''}`}
+      className={`w-full h-9 px-3 py-1.5 bg-surfaceHighlight border border-border rounded-lg text-xs text-text placeholder:text-textMuted focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50 ${error ? 'border-danger focus:ring-danger' : ''} ${className || ''}`}
       {...props}
     />
-    {error && <p className="mt-1 text-xs text-danger">{error}</p>}
+    {error && <p className="mt-1 text-[10px] text-danger">{error}</p>}
   </div>
 );
 
@@ -163,16 +163,16 @@ export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElemen
 }
 
 export const Select = ({ label, error, options, className, ...props }: SelectProps) => (
-  <div className="w-full">
-    {label && <label className="block text-sm font-medium text-textMuted mb-1">{label}</label>}
+  <div className="w-full font-sans">
+    {label && <label className="block text-[10px] font-bold uppercase tracking-wider text-textMuted mb-1">{label}</label>}
     <select
-      className={`w-full h-10 px-3 py-2 bg-surfaceHighlight border border-border rounded-lg text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50 ${error ? 'border-danger focus:ring-danger' : ''} ${className || ''}`}
+      className={`w-full h-9 px-2.5 py-1.5 bg-surfaceHighlight border border-border rounded-lg text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50 ${error ? 'border-danger focus:ring-danger' : ''} ${className || ''}`}
       {...props}
     >
       {options.map(opt => (
         <option key={opt.value} value={opt.value}>{opt.label}</option>
       ))}
     </select>
-    {error && <p className="mt-1 text-xs text-danger">{error}</p>}
+    {error && <p className="mt-1 text-[10px] text-danger">{error}</p>}
   </div>
 );

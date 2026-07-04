@@ -93,6 +93,8 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
 
   const [billing, setBilling] = useState<any>(null);
   const [showBillingReminder, setShowBillingReminder] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
   useEffect(() => {
     const checkBillingStatus = async () => {
@@ -140,6 +142,70 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
       }
     };
     loadEmployees();
+  }, [session]);
+
+  useEffect(() => {
+    const loadNotifications = async () => {
+      if (!session) return;
+      try {
+        const list: any[] = [];
+        const { getCompanies, getCompanyBilling, getLeaveRequests } = await import('./services/api');
+        
+        if (session.isSuperAdmin) {
+          // Fetch pending payments
+          const comps = await getCompanies();
+          for (const c of comps) {
+            const b = await getCompanyBilling(c.id);
+            if (b && b.payments) {
+              b.payments.forEach((p: any) => {
+                if (p.status === 'pending') {
+                  list.push({
+                    id: `payment-${p.id || p.transactionId}`,
+                    text: `Pending BDT ${p.amount} billing payment from ${c.name} (TrxID: ${p.transactionId})`,
+                    link: '/admin/pending-payments',
+                    type: 'payment'
+                  });
+                }
+              });
+            }
+          }
+        } else if (session.isEmployee) {
+          // Employee: fetch their own leave requests
+          const leaves = await getLeaveRequests();
+          const myLeaves = leaves.filter((r: any) => r.employeeId === session.employeeId);
+          myLeaves.forEach((r: any) => {
+            if (r.status !== 'Pending') {
+              list.push({
+                id: `leave-${r.id}`,
+                text: `Your ${r.leaveCategory} leave request (${r.startDate} to ${r.endDate}) has been ${r.status.toLowerCase()}.`,
+                link: '/leave-requests',
+                type: 'leave_status'
+              });
+            }
+          });
+        } else {
+          // Company Admin: fetch pending leave requests
+          const leaves = await getLeaveRequests();
+          leaves.forEach((r: any) => {
+            if (r.status === 'Pending') {
+              list.push({
+                id: `leave-pending-${r.id}`,
+                text: `New leave request from ${r.employeeName} for ${r.leaveCategory} (${r.startDate} to ${r.endDate}).`,
+                link: '/leave-requests',
+                type: 'leave_pending'
+              });
+            }
+          });
+        }
+        setNotifications(list);
+      } catch (err) {
+        console.warn('Error loading notifications:', err);
+      }
+    };
+
+    loadNotifications();
+    const interval = setInterval(loadNotifications, 15000); // Poll every 15s
+    return () => clearInterval(interval);
   }, [session]);
 
   const handleLogout = () => {
@@ -255,12 +321,64 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
                 <IconSearch className="w-5 h-5" />
              </button>
 
-             <button className="relative p-2 text-textMuted hover:text-text transition-colors group">
-                <IconBell className="w-5 h-5 group-hover:shake transition-transform" />
-                <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 bg-danger text-[10px] text-white rounded-full flex items-center justify-center font-bold ring-2 ring-surface">
-                  3
-                </span>
-             </button>
+              <div className="relative">
+                <button 
+                  onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                  className="relative p-2 text-textMuted hover:text-text transition-colors group cursor-pointer"
+                >
+                  <IconBell className="w-5 h-5 group-hover:shake transition-transform" />
+                  {notifications.length > 0 && (
+                    <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 bg-danger text-[10px] text-white rounded-full flex items-center justify-center font-bold ring-2 ring-surface">
+                      {notifications.length}
+                    </span>
+                  )}
+                </button>
+
+                {isNotificationsOpen && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-[90]" 
+                      onClick={() => setIsNotificationsOpen(false)}
+                    />
+                    <div className="absolute right-0 top-full mt-2 w-80 bg-surface border border-border rounded-xl shadow-xl py-2 transition-all z-[100] max-h-[360px] overflow-y-auto font-sans text-left">
+                      <div className="px-4 py-2 border-b border-border flex justify-between items-center">
+                        <span className="text-xs font-bold text-text uppercase tracking-wider">Notifications</span>
+                        <span className="text-[10px] bg-primary/10 text-primary font-black px-2 py-0.5 rounded-full uppercase">
+                          {notifications.length} Pending
+                        </span>
+                      </div>
+                      
+                      <div className="divide-y divide-border/50">
+                        {notifications.length > 0 ? (
+                          notifications.map((notif) => (
+                            <button
+                              key={notif.id}
+                              onClick={() => {
+                                setIsNotificationsOpen(false);
+                                if (notif.link) {
+                                  navigate(notif.link);
+                                }
+                              }}
+                              className="w-full text-left px-4 py-3 hover:bg-surfaceHighlight/50 transition-colors flex flex-col gap-1 cursor-pointer"
+                            >
+                              <p className="text-xs text-text leading-relaxed font-semibold">
+                                {notif.text}
+                              </p>
+                              <span className="text-[9px] text-primary uppercase font-black tracking-wider">
+                                Click to resolve
+                              </span>
+                            </button>
+                          ))
+                        ) : (
+                          <div className="p-6 text-center text-xs text-textMuted italic uppercase font-black tracking-wide">
+                            No new notifications
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
 
              <div className="flex items-center gap-3 md:gap-5 pl-3 md:pl-6 border-l border-border">
                  <div className="relative">

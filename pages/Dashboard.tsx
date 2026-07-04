@@ -246,7 +246,7 @@ const Dashboard = () => {
       </div>
 
       {/* Bottom Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="w-full">
           {/* Recent Activity */}
           <Card className="p-6">
               <h3 className="text-lg font-semibold text-text mb-4">Real-time Feed (Today)</h3>
@@ -278,20 +278,6 @@ const Dashboard = () => {
                     </div>
                   )}
               </div>
-          </Card>
-
-          <Card className="p-6">
-             <h3 className="text-lg font-semibold text-text mb-4">Daily Insight</h3>
-             <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 text-sm text-text space-y-3">
-                <p>System status: <span className="text-emerald-500 font-medium">Healthy</span></p>
-                <p>Last Sync: <span className="font-mono">{currentTime.toLocaleTimeString()}</span></p>
-                {attendanceRate < 50 && totalEmployeesCount > 0 && (
-                   <p className="text-amber-500">Notice: Low attendance occupancy detected for current workforce.</p>
-                )}
-                {totalEmployeesCount === 0 && (
-                  <p className="text-textMuted italic">Please configure API settings to start receiving real-time data.</p>
-                )}
-             </div>
           </Card>
       </div>
     </div>

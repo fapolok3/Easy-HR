@@ -313,9 +313,9 @@ const MobilePunch = () => {
         <div className="flex flex-col items-center gap-2 py-4">
            <p className="text-[9px] font-bold text-textMuted uppercase tracking-widest">Hold to Punch</p>
            
-           <div className="relative w-24 h-24 flex items-center justify-center">
+           <div className="relative flex items-center justify-center" style={{ width: '96px', height: '96px' }}>
              {/* Progress Circle */}
-             <svg className="absolute inset-0 w-full h-full -rotate-90">
+             <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 96 96">
                <circle
                  cx="48"
                  cy="48"
@@ -345,9 +345,10 @@ const MobilePunch = () => {
                onTouchStart={startPunching}
                onTouchEnd={stopPunching}
                animate={punching ? { scale: 0.9, backgroundColor: 'rgba(28, 189, 176, 0.1)' } : { scale: 1, backgroundColor: '#fff' }}
-               className="w-16 h-16 rounded-full border-4 border-slate-100 shadow-xl flex items-center justify-center text-primary z-10 select-none touch-none"
+               className="rounded-full border-4 border-slate-100 shadow-xl flex items-center justify-center text-primary z-10 select-none touch-none"
+               style={{ width: '64px', height: '64px' }}
              >
-               <IconFingerprint className="w-12 h-12" />
+               <IconFingerprint className="w-12 h-12" style={{ width: '44px', height: '44px' }} />
              </motion.button>
 
              {/* Animated Rings */}
