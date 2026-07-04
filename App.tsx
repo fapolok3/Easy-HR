@@ -37,12 +37,16 @@ const SessionContext = React.createContext<{
   logout: () => void;
   systemLogo: string | null;
   setSystemLogo: (url: string | null) => void;
+  systemName: string;
+  setSystemName: (name: string) => void;
 }>({
   session: null,
   login: () => {},
   logout: () => {},
   systemLogo: null,
   setSystemLogo: () => {},
+  systemName: 'Easy HR',
+  setSystemName: () => {},
 });
 
 export const useSession = () => React.useContext(SessionContext);
@@ -480,6 +484,7 @@ const App = () => {
   const [session, setSession] = useState<AuthSession | null>(getCurrentSession());
   const [isLocked, setIsLocked] = useState(false);
   const [systemLogo, setSystemLogo] = useState<string | null>(null);
+  const [systemName, setSystemName] = useState<string>('Easy HR');
   const isSupabaseReady = checkSupabase();
 
   const login = (newSession: AuthSession) => {
@@ -498,9 +503,14 @@ const App = () => {
       try {
         const { getSystemLogoConfig, setFavicon } = await import('./services/api');
         const config = await getSystemLogoConfig();
-        if (config && config.logoUrl) {
-          setSystemLogo(config.logoUrl);
-          setFavicon(config.logoUrl);
+        if (config) {
+          if (config.logoUrl) {
+            setSystemLogo(config.logoUrl);
+            setFavicon(config.logoUrl);
+          }
+          if (config.systemName) {
+            setSystemName(config.systemName);
+          }
         }
       } catch (err) {
         console.warn('Failed to load global logo on mount:', err);
@@ -534,7 +544,7 @@ const App = () => {
   }, [session]);
 
   return (
-    <SessionContext.Provider value={{ session, login, logout, systemLogo, setSystemLogo }}>
+    <SessionContext.Provider value={{ session, login, logout, systemLogo, setSystemLogo, systemName, setSystemName }}>
       <Toaster 
         theme="dark" 
         position="top-right" 

@@ -1997,6 +1997,7 @@ export const deleteCompanyBillingPayment = async (companyId: string, paymentId: 
 
 export interface SystemLogoConfig {
   logoUrl: string;
+  systemName?: string;
   updatedAt: number;
 }
 
@@ -2017,7 +2018,7 @@ export const getSystemLogoConfig = async (): Promise<SystemLogoConfig | null> =>
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
-        if (parsed && parsed.logoUrl) {
+        if (parsed && (parsed.logoUrl || parsed.systemName)) {
           return parsed;
         }
       } catch (e) {}
@@ -2067,8 +2068,21 @@ export const uploadSystemLogo = async (file: File): Promise<string | null> => {
       .from('avatars')
       .getPublicUrl(filePath);
 
+    // Maintain existing systemName if it exists
+    let currentName = 'Easy HR';
+    const cached = localStorage.getItem('easyhr_system_logo_config');
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed && parsed.systemName) {
+          currentName = parsed.systemName;
+        }
+      } catch (e) {}
+    }
+
     const config: SystemLogoConfig = {
       logoUrl: publicUrl,
+      systemName: currentName,
       updatedAt: Date.now()
     };
 
@@ -2096,7 +2110,24 @@ export const uploadSystemLogo = async (file: File): Promise<string | null> => {
 
 export const deleteSystemLogo = async () => {
   try {
-    localStorage.removeItem('easyhr_system_logo_config');
+    let currentName = 'Easy HR';
+    const cached = localStorage.getItem('easyhr_system_logo_config');
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed && parsed.systemName) {
+          currentName = parsed.systemName;
+        }
+      } catch (e) {}
+    }
+
+    const config: SystemLogoConfig = {
+      logoUrl: '',
+      systemName: currentName,
+      updatedAt: Date.now()
+    };
+    localStorage.setItem('easyhr_system_logo_config', JSON.stringify(config));
+
     if (typeof document !== 'undefined') {
       let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
       if (link) {
@@ -2105,17 +2136,51 @@ export const deleteSystemLogo = async () => {
     }
     if (!checkSupabase()) return;
     
+    // Upload updated config.json
+    const configData = JSON.stringify(config);
+    const blob = new Blob([configData], { type: 'application/json' });
+    const configFile = new File([blob], 'config.json', { type: 'application/json' });
+    await supabase.storage.from('avatars').upload('system/config.json', configFile, { upsert: true });
+
     await supabase.storage.from('avatars').remove([
       'system/logo.png', 
       'system/logo.jpg', 
       'system/logo.jpeg', 
       'system/logo.webp', 
       'system/logo.ico', 
-      'system/logo.svg', 
-      'system/config.json'
+      'system/logo.svg'
     ]);
   } catch (err) {
     console.error('Error deleting system logo:', err);
+  }
+};
+
+export const saveSystemBrandingConfig = async (logoUrl: string | null, name: string): Promise<void> => {
+  try {
+    const config: SystemLogoConfig = {
+      logoUrl: logoUrl || '',
+      systemName: name,
+      updatedAt: Date.now()
+    };
+
+    localStorage.setItem('easyhr_system_logo_config', JSON.stringify(config));
+
+    if (!checkSupabase()) return;
+
+    const configData = JSON.stringify(config);
+    const blob = new Blob([configData], { type: 'application/json' });
+    const configFile = new File([blob], 'config.json', { type: 'application/json' });
+
+    const { error: configError } = await supabase.storage
+      .from('avatars')
+      .upload('system/config.json', configFile, { upsert: true });
+
+    if (configError) {
+      throw configError;
+    }
+  } catch (err) {
+    console.error('Error saving system branding config:', err);
+    throw err;
   }
 };
 

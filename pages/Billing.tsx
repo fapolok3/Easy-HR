@@ -12,7 +12,9 @@ import {
 import { CompanyBilling, BillingPayment } from '../types';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
-import { IconCheckCircle, IconAlertCircle, IconMenu, IconX } from '../components/Icons';
+import { IconCheckCircle, IconAlertCircle, IconMenu, IconX, IconDownload } from '../components/Icons';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const Billing = () => {
   const { session, logout } = useSession();
@@ -141,6 +143,146 @@ const Billing = () => {
     const [year, month] = monthStr.split('-');
     const date = new Date(Number(year), Number(month) - 1, 1);
     return date.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+  };
+
+  const downloadInvoicePDF = (payment: BillingPayment) => {
+    try {
+      const doc = new jsPDF('p', 'mm', 'a4');
+      
+      // Header Banner/Accent
+      doc.setFillColor(28, 189, 176); // Deep Teal theme
+      doc.rect(0, 0, 210, 15, 'F');
+      
+      // Header branding
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text('EASY HR - SUBSCRIPTION INVOICE', 15, 10);
+      
+      // Invoice Meta Info
+      doc.setTextColor(40, 40, 40);
+      doc.setFontSize(18);
+      doc.text('INVOICE / RECEIPT', 15, 30);
+      
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 100, 100);
+      
+      // Draw standard metadata box
+      doc.text(`Invoice ID: INV-TX-${payment.id}`, 15, 38);
+      doc.text(`Billing Month: ${getMonthName(payment.month)}`, 15, 43);
+      doc.text(`Submitted Date: ${new Date(payment.timestamp).toLocaleDateString()}`, 15, 48);
+      
+      // Company Info (Right-aligned or to the right side)
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(40, 40, 40);
+      doc.text('PREPARED FOR:', 130, 30);
+      
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(80, 80, 80);
+      doc.text(company?.name || 'Your Registered Org', 130, 35);
+      doc.text(`ID: ${company?.id || session?.companyId}`, 130, 40);
+      doc.text(`Email: ${company?.contactEmail || 'N/A'}`, 130, 45);
+      
+      // Draw horizontal separator
+      doc.setLineWidth(0.5);
+      doc.setDrawColor(220, 220, 220);
+      doc.line(15, 53, 195, 53);
+      
+      // Payment Method Details
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(28, 189, 176);
+      doc.text('PAYMENT INFORMATION', 15, 62);
+      
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(80, 80, 80);
+      doc.text(`Payment Gateway: bKash Merchant`, 15, 68);
+      doc.text(`bKash Account: ${billing?.bkashNumber || DEFAULT_BKASH_NUMBER}`, 15, 73);
+      doc.text(`Transaction ID (TrxID): ${payment.trxId}`, 15, 78);
+      
+      // Payment status badge drawing
+      const statusUpper = payment.status.toUpperCase();
+      let statusColor: [number, number, number] = [245, 158, 11]; // Amber
+      if (payment.status === 'approved') statusColor = [16, 185, 129]; // Emerald
+      if (payment.status === 'rejected') statusColor = [239, 68, 68]; // Red
+      
+      doc.setFillColor(...statusColor);
+      doc.rect(130, 62, 65, 18, 'F');
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.text('STATUS', 135, 68);
+      doc.setFontSize(12);
+      doc.text(statusUpper, 135, 75);
+      
+      // Reset Font Size and Color for standard content
+      doc.setFontSize(9);
+      doc.setTextColor(40, 40, 40);
+      
+      // Line Items Table using autoTable
+      const tableRows = [
+        [
+          '1',
+          `Easy HR SaaS Subscription - ${getMonthName(payment.month)}`,
+          '1 Month',
+          `${payment.amount} BDT`,
+          `${payment.amount} BDT`
+        ]
+      ];
+      
+      autoTable(doc, {
+        startY: 88,
+        head: [['SL', 'Description', 'Billing Period', 'Unit Price', 'Total']],
+        body: tableRows,
+        theme: 'striped',
+        headStyles: { fillColor: [28, 189, 176], textColor: [255, 255, 255], fontStyle: 'bold' },
+        styles: { fontSize: 9, cellPadding: 3 },
+        columnStyles: {
+          0: { cellWidth: 15, halign: 'center' },
+          1: { cellWidth: 100 },
+          2: { cellWidth: 30, halign: 'center' },
+          3: { cellWidth: 25, halign: 'right' },
+          4: { cellWidth: 25, halign: 'right' }
+        },
+        margin: { left: 15, right: 15 }
+      });
+      
+      // Calculate start y after table
+      const finalY = (doc as any).lastAutoTable.finalY + 15;
+      
+      // Totals Box on Right
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 100, 100);
+      doc.text('Subtotal:', 140, finalY);
+      doc.text(`${payment.amount} BDT`, 175, finalY, { align: 'right' });
+      
+      doc.text('VAT / Tax (0%):', 140, finalY + 5);
+      doc.text('0 BDT', 175, finalY + 5, { align: 'right' });
+      
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(40, 40, 40);
+      doc.text('Total Paid:', 140, finalY + 12);
+      doc.text(`${payment.amount} BDT`, 175, finalY + 12, { align: 'right' });
+      
+      // Draw boundary line for total
+      doc.setLineWidth(0.3);
+      doc.setDrawColor(200, 200, 200);
+      doc.line(135, finalY + 15, 195, finalY + 15);
+      
+      // Footer block
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(8.5);
+      doc.setTextColor(120, 120, 120);
+      doc.text('Thank you for choosing Easy HR as your trusted HR partner.', 15, finalY + 35);
+      doc.text('This is an electronically generated document. No signature is required.', 15, finalY + 40);
+      
+      doc.save(`Easy_HR_Invoice_${payment.id}.pdf`);
+      toast.success('Invoice PDF downloaded successfully!');
+    } catch (err) {
+      console.error('Error generating invoice PDF:', err);
+      toast.error('Failed to generate invoice PDF.');
+    }
   };
 
   if (loading) {
@@ -339,13 +481,14 @@ const Billing = () => {
                     <th className="px-4 py-3">Transaction ID</th>
                     <th className="px-4 py-3">Amount</th>
                     <th className="px-4 py-3">Submitted At</th>
-                    <th className="px-4 py-3 text-right">Verification Status</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3 text-right">Invoice</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {!billing?.payments || billing.payments.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-4 py-8 text-center text-textMuted italic uppercase font-bold text-xs tracking-wider">
+                      <td colSpan={6} className="px-4 py-8 text-center text-textMuted italic uppercase font-bold text-xs tracking-wider">
                         No previous bKash payment submissions found.
                       </td>
                     </tr>
@@ -358,7 +501,7 @@ const Billing = () => {
                         <td className="px-4 py-3.5 text-textMuted text-xs font-semibold">
                           {new Date(p.timestamp).toLocaleString()}
                         </td>
-                        <td className="px-4 py-3.5 text-right">
+                        <td className="px-4 py-3.5">
                           {p.status === 'pending' && (
                             <span className="px-3 py-1 text-xs font-black bg-amber-100 text-amber-700 rounded-full border border-amber-200 uppercase tracking-widest animate-pulse">
                               Pending Review
@@ -374,6 +517,16 @@ const Billing = () => {
                               Rejected
                             </span>
                           )}
+                        </td>
+                        <td className="px-4 py-3.5 text-right">
+                          <button
+                            onClick={() => downloadInvoicePDF(p)}
+                            className="p-1.5 bg-primary/10 hover:bg-primary/25 text-primary border border-primary/20 rounded-lg inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-wider transition-all hover:scale-105 cursor-pointer"
+                            title="Download Invoice PDF"
+                          >
+                            <IconDownload className="w-3.5 h-3.5" />
+                            <span>Download</span>
+                          </button>
                         </td>
                       </tr>
                     ))
@@ -590,13 +743,14 @@ const Billing = () => {
                     <th className="px-4 py-3">Transaction ID</th>
                     <th className="px-4 py-3">Amount</th>
                     <th className="px-4 py-3">Submitted At</th>
-                    <th className="px-4 py-3 text-right">Verification Status</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3 text-right">Invoice</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {filteredPayments.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-4 py-8 text-center text-textMuted italic uppercase font-bold text-xs tracking-wider">
+                      <td colSpan={6} className="px-4 py-8 text-center text-textMuted italic uppercase font-bold text-xs tracking-wider">
                         No payment submissions found for {selectedYear}.
                       </td>
                     </tr>
@@ -609,7 +763,7 @@ const Billing = () => {
                         <td className="px-4 py-3.5 text-textMuted text-xs font-semibold">
                           {new Date(p.timestamp).toLocaleString()}
                         </td>
-                        <td className="px-4 py-3.5 text-right">
+                        <td className="px-4 py-3.5">
                           {p.status === 'pending' && (
                             <span className="px-2 py-0.5 text-[10px] font-black bg-amber-100 text-amber-700 rounded-full border border-amber-200 uppercase tracking-wider">
                               Pending Review
@@ -625,6 +779,16 @@ const Billing = () => {
                               Rejected
                             </span>
                           )}
+                        </td>
+                        <td className="px-4 py-3.5 text-right">
+                          <button
+                            onClick={() => downloadInvoicePDF(p)}
+                            className="p-1 px-2.5 bg-primary/10 hover:bg-primary/25 text-primary border border-primary/20 rounded-lg inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider transition-all hover:scale-105 cursor-pointer"
+                            title="Download Invoice PDF"
+                          >
+                            <IconDownload className="w-3.5 h-3.5" />
+                            <span>Download</span>
+                          </button>
                         </td>
                       </tr>
                     ))

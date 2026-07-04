@@ -22,7 +22,7 @@ interface NavItem {
 }
 
 const Sidebar = ({ isCollapsed }: { isCollapsed: boolean }) => {
-  const { session, systemLogo } = useSession();
+  const { session, systemLogo, systemName } = useSession();
   const [pendingPaymentsCount, setPendingPaymentsCount] = useState(0);
 
   useEffect(() => {
@@ -108,7 +108,7 @@ const Sidebar = ({ isCollapsed }: { isCollapsed: boolean }) => {
               E
             </div>
           )}
-          {!isCollapsed && <span className="text-xl font-bold tracking-tight text-text">Easy<span className="text-primary"> HR</span></span>}
+          {!isCollapsed && <span className="text-xl font-black tracking-tight text-text uppercase">{systemName}</span>}
         </div>
       </div>
 

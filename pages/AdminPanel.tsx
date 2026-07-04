@@ -38,8 +38,29 @@ const AdminPanel = ({ activeTab: routeActiveTab }: AdminPanelProps) => {
 
   // Global settings
   const [globalBkash, setGlobalBkash] = useState('01787654321');
-  const { systemLogo, setSystemLogo } = useSession();
+  const { systemLogo, setSystemLogo, systemName, setSystemName } = useSession();
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [inputSystemName, setInputSystemName] = useState(systemName);
+
+  useEffect(() => {
+    setInputSystemName(systemName);
+  }, [systemName]);
+
+  const handleSaveSystemName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputSystemName.trim()) {
+      toast.error('System branding name cannot be empty.');
+      return;
+    }
+    try {
+      const { saveSystemBrandingConfig } = await import('../services/api');
+      await saveSystemBrandingConfig(systemLogo, inputSystemName.trim());
+      setSystemName(inputSystemName.trim());
+      toast.success('System branding name updated successfully!');
+    } catch (err) {
+      toast.error('Failed to update system branding name.');
+    }
+  };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -928,15 +949,30 @@ const AdminPanel = ({ activeTab: routeActiveTab }: AdminPanelProps) => {
               Global System Branding & Logo
             </h2>
             <p className="text-xs text-textMuted leading-relaxed uppercase font-bold tracking-wide">
-              * Upload a custom system logo. It will automatically update the branding logo in the sidebar, login page, and will be set as the browser's tab icon (favicon). This is stored securely in Supabase.
+              * Set a custom branding name and upload a custom system logo. It will automatically update the branding logo in the sidebar, login page, and will be set as the browser's tab icon (favicon). This is stored securely in Supabase.
             </p>
+
+            <form onSubmit={handleSaveSystemName} className="flex flex-col sm:flex-row items-end gap-4 max-w-lg border-b border-border pb-6">
+              <div className="flex-1 w-full">
+                <Input 
+                  label="System Branding Name" 
+                  value={inputSystemName} 
+                  onChange={e => setInputSystemName(e.target.value)}
+                  placeholder="e.g. Easy HR"
+                  required
+                />
+              </div>
+              <Button type="submit" className="h-11 shrink-0 uppercase font-black tracking-widest text-xs px-6 bg-emerald-600 hover:bg-emerald-700">
+                Save System Name
+              </Button>
+            </form>
             
             <div className="flex flex-col md:flex-row items-center gap-6 p-4 bg-surfaceHighlight/50 rounded-xl border border-border">
               <div className="w-20 h-20 rounded-xl bg-surface border border-border flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
                 {systemLogo ? (
                   <img src={systemLogo} alt="Current System Logo" className="w-full h-full object-contain p-2" referrerPolicy="no-referrer" />
                 ) : (
-                  <span className="text-3xl font-black text-textMuted">E</span>
+                  <span className="text-3xl font-black text-textMuted">{inputSystemName.charAt(0).toUpperCase()}</span>
                 )}
               </div>
               
