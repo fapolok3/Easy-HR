@@ -124,40 +124,65 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 md:p-8 font-sans">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-slate-50 to-blue-50 flex items-center justify-center p-4 md:p-8 font-sans relative overflow-hidden">
+      {/* Floating ambient glow circles behind the glass card */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-400/20 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute -top-40 -left-40 w-96 h-96 bg-indigo-300/20 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-blue-300/20 rounded-full blur-[100px] pointer-events-none" />
+
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-5xl bg-white rounded-[24px] md:rounded-[32px] shadow-2xl border border-slate-100 overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[620px]"
+        className="w-full max-w-5xl bg-white/60 backdrop-blur-2xl rounded-[24px] md:rounded-[32px] border border-white/80 shadow-[0_30px_60px_-15px_rgba(15,23,42,0.1)] overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[620px] relative z-10"
       >
-        {/* Left Side (Banner with gradients and dashboard graphic) */}
-        <div className="hidden lg:flex lg:col-span-5 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-900 text-white p-12 flex-col justify-between relative overflow-hidden">
+        {/* Left Side (Banner with gradients, checkmarks and dashboard graphic) */}
+        <div className="hidden lg:flex lg:col-span-5 bg-gradient-to-b from-blue-500/80 to-indigo-600/85 backdrop-blur-md text-white p-12 flex-col justify-between relative overflow-hidden border-r border-white/20">
           {/* Decorative background blur shapes */}
-          <div className="absolute top-[-20%] left-[-20%] w-80 h-80 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-[-20%] right-[-10%] w-80 h-80 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute top-[-20%] left-[-20%] w-80 h-80 bg-blue-300/20 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-[-20%] right-[-10%] w-80 h-80 bg-indigo-300/20 rounded-full blur-3xl pointer-events-none" />
           
-          {/* Custom logo name and Welcome Back! above it */}
+          {/* Custom logo name above Welcome Back */}
           <div className="z-10 flex flex-col gap-3">
             {systemLogo ? (
-              <img src={systemLogo} alt="Logo" className="w-24 h-24 object-contain rounded-xl" referrerPolicy="no-referrer" />
+              <img src={systemLogo} alt="Logo" className="w-28 h-28 object-contain rounded-xl" referrerPolicy="no-referrer" />
             ) : (
-              <EasyHRLogo className="w-24 h-24" />
-            )}
-            {systemName && systemName.toLowerCase() !== 'easy hr' && (
-              <h1 className="text-2xl font-black text-white tracking-tight uppercase">
-                {systemName}
-              </h1>
+              <EasyHRLogo className="w-28 h-28" />
             )}
           </div>
 
           {/* Welcome Text in center-top */}
-          <div className="z-10 mt-6 mb-6">
-            <h2 className="text-3xl font-extrabold tracking-tight mb-2">Welcome Back!</h2>
-            <p className="text-sm text-blue-100/90 font-medium">
-              {systemName.toLowerCase() === 'easy hr' ? 'Sign in to continue to your account' : `Sign in to continue to your ${systemName} account`}
-            </p>
-            <div className="w-10 h-1 bg-blue-400 rounded-full mt-4" />
+          <div className="z-10 mt-6 mb-6 space-y-6">
+            <div>
+              <h2 className="text-3xl font-extrabold tracking-tight mb-2 text-white">Welcome Back!</h2>
+              <p className="text-sm text-blue-50/90 leading-relaxed font-medium">
+                Sign in to continue to your {systemName} account and manage your workspace.
+              </p>
+            </div>
+
+            {/* Checkpoint points */}
+            <div className="space-y-3.5 pt-2">
+              <div className="flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-300 shrink-0 shadow-sm">
+                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                </div>
+                <span className="text-xs font-semibold text-white/95 tracking-wide">Real-time attendance</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-300 shrink-0 shadow-sm">
+                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                </div>
+                <span className="text-xs font-semibold text-white/95 tracking-wide">Shift management</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-300 shrink-0 shadow-sm">
+                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                </div>
+                <span className="text-xs font-semibold text-white/95 tracking-wide">Leave tracking</span>
+              </div>
+            </div>
+
+            <div className="w-10 h-1 bg-white/40 rounded-full mt-4" />
           </div>
 
           {/* Graphical Illustration Container */}
@@ -167,61 +192,61 @@ const Login = () => {
               {/* Leaves */}
               <div className="relative w-16 h-28 flex items-end">
                 {/* Stem */}
-                <div className="absolute left-1/2 bottom-0 w-0.5 h-24 bg-blue-400/50" />
+                <div className="absolute left-1/2 bottom-0 w-0.5 h-24 bg-white/30" />
                 {/* Leaf 1 */}
-                <div className="absolute bottom-4 left-0 w-6 h-10 bg-blue-400/40 rounded-full origin-bottom-right rotate-[-35deg]" />
+                <div className="absolute bottom-4 left-0 w-6 h-10 bg-white/40 rounded-full origin-bottom-right rotate-[-35deg] backdrop-blur-[2px]" />
                 {/* Leaf 2 */}
-                <div className="absolute bottom-10 right-0 w-6 h-10 bg-blue-300/40 rounded-full origin-bottom-left rotate-[35deg]" />
+                <div className="absolute bottom-10 right-0 w-6 h-10 bg-white/50 rounded-full origin-bottom-left rotate-[35deg] backdrop-blur-[2px]" />
                 {/* Leaf 3 */}
-                <div className="absolute bottom-16 left-1 w-5 h-9 bg-blue-400/50 rounded-full origin-bottom-right rotate-[-20deg]" />
+                <div className="absolute bottom-16 left-1 w-5 h-9 bg-white/35 rounded-full origin-bottom-right rotate-[-20deg]" />
                 {/* Leaf 4 */}
-                <div className="absolute bottom-22 right-1 w-5 h-9 bg-blue-300/50 rounded-full origin-bottom-left rotate-[20deg]" />
+                <div className="absolute bottom-22 right-1 w-5 h-9 bg-white/45 rounded-full origin-bottom-left rotate-[20deg]" />
                 {/* Leaf Top */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-4 h-8 bg-blue-300/60 rounded-full" />
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-4 h-8 bg-white/60 rounded-full" />
               </div>
-              {/* White Pot */}
-              <div className="w-10 h-10 bg-white rounded-b-md rounded-t-sm shadow-md border border-slate-100 flex items-center justify-center">
-                <div className="w-8 h-1.5 bg-slate-100 rounded-full mb-5" />
+              {/* White/Gray Pot */}
+              <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-b-md rounded-t-sm shadow-md border border-white/25 flex items-center justify-center">
+                <div className="w-8 h-1.5 bg-white/30 rounded-full mb-5" />
               </div>
             </div>
 
             {/* Dashboard Mock Window */}
-            <div className="w-full max-w-[280px] bg-slate-900/40 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden shadow-2xl ml-8">
+            <div className="w-full max-w-[280px] bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 overflow-hidden shadow-2xl ml-8">
               {/* Window Header */}
-              <div className="px-4 py-3 border-b border-white/5 flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-white/20" />
-                <div className="w-2 h-2 rounded-full bg-white/20" />
-                <div className="w-2 h-2 rounded-full bg-white/20" />
+              <div className="px-4 py-3 border-b border-white/15 flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-white/30" />
+                <div className="w-2 h-2 rounded-full bg-white/30" />
+                <div className="w-2 h-2 rounded-full bg-white/30" />
               </div>
               {/* Window Layout */}
-              <div className="grid grid-cols-12 min-h-[160px] text-white/90">
+              <div className="grid grid-cols-12 min-h-[160px] text-white">
                 {/* Sidebar of Mock Window */}
-                <div className="col-span-3 border-r border-white/5 p-3 flex flex-col gap-3 items-center bg-white/5">
-                  <div className="w-6 h-6 rounded-full bg-blue-500/30 flex items-center justify-center">
-                    <div className="w-3.5 h-3.5 rounded-full bg-blue-300" />
+                <div className="col-span-3 border-r border-white/15 p-3 flex flex-col gap-3 items-center bg-white/5">
+                  <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
+                    <div className="w-3.5 h-3.5 rounded-full bg-white/80" />
                   </div>
-                  <div className="w-5 h-1 bg-white/20 rounded" />
-                  <div className="w-5 h-1 bg-white/10 rounded" />
-                  <div className="w-5 h-1 bg-white/10 rounded" />
-                  <div className="w-5 h-1 bg-white/10 rounded" />
+                  <div className="w-5 h-1 bg-white/30 rounded" />
+                  <div className="w-5 h-1 bg-white/15 rounded" />
+                  <div className="w-5 h-1 bg-white/15 rounded" />
+                  <div className="w-5 h-1 bg-white/15 rounded" />
                 </div>
                 {/* Main of Mock Window */}
                 <div className="col-span-9 p-3 space-y-3">
                   {/* Row 1 */}
                   <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-white/10" />
+                    <div className="w-6 h-6 rounded-full bg-white/15" />
                     <div className="space-y-1 flex-1">
-                      <div className="w-16 h-1.5 bg-white/20 rounded" />
-                      <div className="w-10 h-1 bg-white/10 rounded" />
+                      <div className="w-16 h-1.5 bg-white/30 rounded" />
+                      <div className="w-10 h-1 bg-white/15 rounded" />
                     </div>
                   </div>
                   {/* Line Chart Graphic */}
-                  <div className="p-2 rounded-lg bg-white/5 border border-white/5 space-y-1">
-                    <div className="w-12 h-1.5 bg-white/15 rounded mb-2" />
+                  <div className="p-2 rounded-lg bg-white/5 border border-white/10 space-y-1">
+                    <div className="w-12 h-1.5 bg-white/25 rounded mb-2" />
                     <svg className="w-full h-8 overflow-visible" viewBox="0 0 100 30">
-                      <path d="M0 25 Q20 5, 40 20 T80 8 T100 15" fill="none" stroke="#60A5FA" strokeWidth="2" strokeLinecap="round" />
-                      <circle cx="40" cy="20" r="2" fill="#3B82F6" />
-                      <circle cx="80" cy="8" r="2" fill="#3B82F6" />
+                      <path d="M0 25 Q20 5, 40 20 T80 8 T100 15" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" />
+                      <circle cx="40" cy="20" r="2" fill="#ffffff" />
+                      <circle cx="80" cy="8" r="2" fill="#ffffff" />
                     </svg>
                   </div>
                 </div>
@@ -229,41 +254,34 @@ const Login = () => {
             </div>
 
             {/* Float Small Widget */}
-            <div className="absolute right-[-10px] bottom-4 bg-white rounded-xl shadow-lg border border-slate-100 p-2.5 flex items-center gap-2.5 text-slate-800 z-20 w-32">
-              <div className="w-6 h-6 rounded-full border-2 border-blue-500 border-t-transparent animate-spin flex items-center justify-center" />
+            <div className="absolute right-[-10px] bottom-4 bg-white/15 backdrop-blur-md rounded-xl shadow-lg border border-white/20 p-2.5 flex items-center gap-2.5 text-white z-20 w-32">
+              <div className="w-6 h-6 rounded-full border-2 border-white border-t-transparent animate-spin flex items-center justify-center" />
               <div className="space-y-1">
-                <div className="w-14 h-1.5 bg-slate-200 rounded" />
-                <div className="w-8 h-1 bg-slate-100 rounded" />
+                <div className="w-14 h-1.5 bg-white/30 rounded" />
+                <div className="w-8 h-1 bg-white/15 rounded" />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Right Side (Active Form and centered branding) */}
-        <div className="lg:col-span-7 flex flex-col justify-center p-8 md:p-16 bg-white">
+        {/* Right Side (Active Form and centered branding with Glass Effect) */}
+        <div className="lg:col-span-7 flex flex-col justify-center p-8 md:p-16 bg-white/40 backdrop-blur-sm">
           <div className="w-full max-w-md mx-auto space-y-8">
             
-            {/* Form Logo branding */}
-            <div className="text-center">
-              <div className="flex flex-col items-center justify-center gap-2">
-                {systemLogo ? (
-                  <img src={systemLogo} alt="Logo" className="w-32 h-32 object-contain rounded-2xl shadow-sm" referrerPolicy="no-referrer" />
-                ) : (
-                  <EasyHRLogo className="w-32 h-32" dark={true} />
-                )}
-                {systemName && systemName.toLowerCase() !== 'easy hr' && (
-                  <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase flex items-baseline mt-1">
-                    {systemName}
-                  </h1>
-                )}
-              </div>
+            {/* Form Logo branding (No text name, just larger logo) */}
+            <div className="text-center flex flex-col items-center justify-center mb-2">
+              {systemLogo ? (
+                <img src={systemLogo} alt="Logo" className="w-40 h-40 object-contain rounded-2xl drop-shadow-md" referrerPolicy="no-referrer" />
+              ) : (
+                <EasyHRLogo className="w-40 h-40" dark={true} />
+              )}
             </div>
 
             {error && (
               <motion.div 
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="p-3 bg-red-50 border border-red-200 text-red-600 text-xs font-semibold rounded-xl text-center"
+                className="p-3 bg-red-50 border border-red-200 text-red-600 text-xs font-semibold rounded-xl text-center backdrop-blur-sm"
               >
                 {error}
               </motion.div>
@@ -286,7 +304,7 @@ const Login = () => {
                     onChange={e => setEmail(e.target.value)}
                     placeholder="Enter your email"
                     required
-                    className="w-full h-11 pl-10 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full h-11 pl-10 pr-3 py-2 bg-white/80 border border-slate-200/80 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
                   />
                 </div>
               </div>
@@ -306,7 +324,7 @@ const Login = () => {
                     onChange={e => setPassword(e.target.value)}
                     placeholder="Enter your password"
                     required
-                    className="w-full h-11 pl-10 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full h-11 pl-10 pr-10 py-2 bg-white/80 border border-slate-200/80 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
                   />
                   <button
                     type="button"
@@ -322,12 +340,12 @@ const Login = () => {
               <div className="flex items-center">
                 <label className="flex items-center gap-2 cursor-pointer group select-none">
                   <input 
-                    type="checkbox" 
+                     type="checkbox" 
                     checked={rememberMe}
                     onChange={e => setRememberMe(e.target.checked)}
                     className="sr-only"
                   />
-                  <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${rememberMe ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-300 group-hover:border-slate-400'}`}>
+                  <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${rememberMe ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-300 bg-white group-hover:border-slate-400'}`}>
                     {rememberMe && <Check className="w-3 h-3 stroke-[3]" />}
                   </div>
                   <span className="text-xs text-slate-500 font-medium group-hover:text-slate-700 transition-colors">
@@ -340,7 +358,7 @@ const Login = () => {
               <Button
                 type="submit"
                 disabled={isLoggingIn}
-                className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl flex items-center justify-center gap-2 text-xs uppercase tracking-wider transition-all hover:shadow-lg hover:shadow-blue-500/20 active:scale-[0.98] cursor-pointer"
+                className="w-full h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-xl flex items-center justify-center gap-2 text-xs uppercase tracking-wider transition-all hover:shadow-lg hover:shadow-blue-500/20 active:scale-[0.98] cursor-pointer"
               >
                 <Lock className="w-3.5 h-3.5" />
                 <span>{isLoggingIn ? 'Authenticating...' : 'Sign In'}</span>
@@ -348,7 +366,7 @@ const Login = () => {
 
             </form>
 
-            <div className="pt-6 border-t border-slate-100 text-center">
+            <div className="pt-6 border-t border-slate-200/50 text-center">
               <p className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase leading-relaxed">
                 By signing in, you agree to our Terms of Service & Privacy Policy.
               </p>
